@@ -170,6 +170,7 @@ export default function Reports() {
               <thead className="sticky top-0 bg-muted/50">
                 <tr className="border-b border-border/50">
                   <th className="text-left py-3 px-3 text-[10px] font-semibold text-muted-foreground">Jugador</th>
+                  <th className="text-left py-3 px-3 text-[10px] font-semibold text-muted-foreground">Posición</th>
                   <th className="text-left py-3 px-3 text-[10px] font-semibold text-muted-foreground">Club</th>
                   <th className="text-left py-3 px-3 text-[10px] font-semibold text-muted-foreground">Edad</th>
                   <th className="text-left py-3 px-3 text-[10px] font-semibold text-muted-foreground">Valor</th>
@@ -185,6 +186,7 @@ export default function Reports() {
                       onClick={() => setSelectedPlayer(player)}
                     >
                       <td className="py-3 px-3 text-xs font-medium">{player.alias}</td>
+                      <td className="py-3 px-3 text-xs text-muted-foreground">{player.position || "N/A"}</td>
                       <td className="py-3 px-3 text-xs text-muted-foreground">{player.current_club?.name || "N/A"}</td>
                       <td className="py-3 px-3 text-xs text-muted-foreground">{player.age || "N/A"}</td>
                       <td className="py-3 px-3 text-xs font-semibold">{player.market_value_eur ? `€${(parseFloat(player.market_value_eur as string) / 1000000).toFixed(1)}M` : "N/A"}</td>
@@ -201,7 +203,7 @@ export default function Reports() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="py-8 px-3 text-center text-xs">Sin resultados</td>
+                    <td colSpan={6} className="py-8 px-3 text-center text-xs">Sin resultados</td>
                   </tr>
                 )}
               </tbody>
