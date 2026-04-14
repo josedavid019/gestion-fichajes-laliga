@@ -1,4 +1,4 @@
-import { Download, FileSpreadsheet, FileDown, BarChart3 } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 import PowerBIDashboard from "@/components/PowerBIDashboard";
@@ -111,12 +111,6 @@ export default function Reports() {
           <p className="text-sm text-muted-foreground mt-1">Explora y analiza jugadores de La Liga</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="gap-2">
-            <FileDown className="w-3.5 h-3.5" /> PDF
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2">
-            <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
-          </Button>
           <Button size="sm" className="gap-2" onClick={() => window.open("https://app.powerbi.com/reportEmbed?reportId=95af94a9-e6da-47b0-99f8-91e0d40f0344&autoAuth=true&ctid=740be6bd-fd36-470e-94d9-0f0c777fadb9&actionBarEnabled=true", "_blank")}>
             <BarChart3 className="w-3.5 h-3.5" /> Power BI
           </Button>

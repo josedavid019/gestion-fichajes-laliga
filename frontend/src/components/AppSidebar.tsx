@@ -14,11 +14,10 @@ import {
 } from "@/components/ui/sidebar";
 
 const modules = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/", icon: FileBarChart },
   { title: "Detección YOLO", url: "/detection", icon: Camera },
   { title: "Consulta IA / RAG", url: "/ai-query", icon: Brain },
   { title: "Predicción Valor", url: "/prediction", icon: TrendingUp },
-  { title: "Reportes", url: "/reports", icon: FileBarChart },
 ];
 
 export function AppSidebar() {
