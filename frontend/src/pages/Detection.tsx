@@ -84,7 +84,11 @@ export default function Detection() {
       width: `${((x2 - x1) / imageSize.width) * 100}%`,
       height: `${((y2 - y1) / imageSize.height) * 100}%`,
     };
-  }, [imageSize.height, imageSize.width, result?.vision_analysis.yolo.bounding_box]);
+  }, [
+    imageSize.height,
+    imageSize.width,
+    result?.vision_analysis.yolo.bounding_box,
+  ]);
 
   const handleFileChange = (file: File | null) => {
     setSelectedFile(file);
@@ -142,15 +146,14 @@ export default function Detection() {
         <h1 className="text-2xl font-heading font-bold">Detección YOLO</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Sube una imagen y revisa detección del jugador, caja YOLO y texto OCR.
-          El nombre solo aparecerá si el OCR logra leerlo o si el backend recibe una pista externa.
+          El nombre solo aparecerá si el OCR logra leerlo o si el backend recibe
+          una pista externa.
         </p>
       </div>
 
       <div className="glass-card p-8">
         {!selectedFile ? (
-          <div
-            className="border-2 border-dashed border-border/60 rounded-xl p-12 text-center hover:border-primary/40 transition-colors"
-          >
+          <div className="border-2 border-dashed border-border/60 rounded-xl p-12 text-center hover:border-primary/40 transition-colors">
             <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
             <p className="text-sm font-medium text-foreground mb-2">
               Selecciona una imagen del jugador
@@ -187,7 +190,11 @@ export default function Detection() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Button onClick={handleAnalyze} disabled={isLoading} className="gap-2">
+              <Button
+                onClick={handleAnalyze}
+                disabled={isLoading}
+                className="gap-2"
+              >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
@@ -226,21 +233,22 @@ export default function Detection() {
                         });
                       }}
                     />
-                    {bboxStyle && result?.vision_analysis.yolo.player_detected && (
-                      <div
-                        className="absolute border-2 border-primary shadow-[0_0_0_1px_rgba(0,0,0,0.35)]"
-                        style={bboxStyle}
-                      >
-                        <span className="absolute -top-7 left-0 rounded-sm bg-primary px-2 py-1 text-[10px] font-semibold text-primary-foreground">
-                          Jugador{" "}
-                          {result.vision_analysis.yolo.confidence
-                            ? `${(
-                                result.vision_analysis.yolo.confidence * 100
-                              ).toFixed(1)}%`
-                            : ""}
-                        </span>
-                      </div>
-                    )}
+                    {bboxStyle &&
+                      result?.vision_analysis.yolo.player_detected && (
+                        <div
+                          className="absolute border-2 border-primary shadow-[0_0_0_1px_rgba(0,0,0,0.35)]"
+                          style={bboxStyle}
+                        >
+                          <span className="absolute -top-7 left-0 rounded-sm bg-primary px-2 py-1 text-[10px] font-semibold text-primary-foreground">
+                            Jugador{" "}
+                            {result.vision_analysis.yolo.confidence
+                              ? `${(
+                                  result.vision_analysis.yolo.confidence * 100
+                                ).toFixed(1)}%`
+                              : ""}
+                          </span>
+                        </div>
+                      )}
                   </div>
                 )}
               </div>
@@ -298,9 +306,7 @@ export default function Detection() {
                           </p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground">
-                            Nacionalidad
-                          </p>
+                          <p className="text-muted-foreground">Nacionalidad</p>
                           <p className="font-medium">
                             {result.player_profile.nationality ||
                               "No disponible"}

@@ -44,7 +44,9 @@ class PlayerDetector:
             return result
 
         try:
-            results = self.model(image, conf=self.conf_threshold, classes=[0], verbose=False)
+            results = self.model(
+                image, conf=self.conf_threshold, classes=[0], verbose=False
+            )
         except Exception as exc:
             result["error"] = f"Error en inferencia YOLO: {exc}"
             logger.error(result["error"])

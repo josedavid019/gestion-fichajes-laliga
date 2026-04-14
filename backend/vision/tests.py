@@ -13,7 +13,9 @@ def _make_dummy_image(width=200, height=300, with_text=True) -> bytes:
     img = np.ones((height, width, 3), dtype=np.uint8) * 50
     cv2.rectangle(img, (50, 80), (150, 220), (200, 60, 30), -1)
     if with_text:
-        cv2.putText(img, "10", (80, 160), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3)
+        cv2.putText(
+            img, "10", (80, 160), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3
+        )
         cv2.putText(
             img,
             "MESSI",
@@ -29,7 +31,9 @@ def _make_dummy_image(width=200, height=300, with_text=True) -> bytes:
 
 
 class OCRExtractorTests(TestCase):
-    @patch("vision.ocr_extractor.OCRExtractor.run_ocr", return_value="10\nMESSI\nBARCELONA")
+    @patch(
+        "vision.ocr_extractor.OCRExtractor.run_ocr", return_value="10\nMESSI\nBARCELONA"
+    )
     def test_extract_returns_result_object(self, _mock_run_ocr):
         from vision.ocr_extractor import OCRExtractor
 
@@ -138,12 +142,21 @@ class AnalyzePlayerEndpointTests(TestCase):
         mock_pipeline = MagicMock()
         mock_pipeline.run.return_value = {
             "meta": {"request_id": "test123", "error": False},
-            "player_profile": {"identified_name": "Lionel Messi", "jersey_number": "10"},
+            "player_profile": {
+                "identified_name": "Lionel Messi",
+                "jersey_number": "10",
+            },
             "statistics": {"goals": 20},
             "market_value": {"current_value_eur": "80000000"},
             "league_info": {"league": "LaLiga"},
             "vision_analysis": {
-                "yolo": {"player_detected": True, "confidence": 0.91, "bounding_box": None, "total_persons_detected": 1, "error": None},
+                "yolo": {
+                    "player_detected": True,
+                    "confidence": 0.91,
+                    "bounding_box": None,
+                    "total_persons_detected": 1,
+                    "error": None,
+                },
                 "ocr": {"player_name_raw": None},
             },
         }
@@ -154,7 +167,9 @@ class AnalyzePlayerEndpointTests(TestCase):
         response = self.client.post(self.url, {"image": img_file}, format="multipart")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.json()["player_profile"]["identified_name"], "Lionel Messi")
+        self.assertEqual(
+            response.json()["player_profile"]["identified_name"], "Lionel Messi"
+        )
 
     def test_health_endpoint(self):
         response = self.client.get(reverse("vision_health"))

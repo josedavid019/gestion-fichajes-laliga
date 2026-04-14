@@ -58,9 +58,20 @@ class VisionPipeline:
 
         # 2. Detección visual (YOLO)
         detection = self.detector.detect(image)
-        
-        # 3. Extracción de texto (OCR)
-        ocr_result = self.ocr.extract(image)
+
+        # 3. Extracción de texto (OCR) — opcional
+        try:
+            ocr_result = self.ocr.extract(image)
+        except Exception as exc:
+            logger.warning(
+                "OCR no disponible (Control de Aplicaciones bloqueó pandas): %s", exc
+            )
+            # Usar objeto dummy si hay error
+            from .ocr_extractor import OCRResult
+
+            ocr_result = OCRResult(
+                raw_text="", player_name=None, team_name=None, jersey_number=None
+            )
 
         search_name = player_name_hint or ocr_result.player_name
         team_name = ocr_result.team_name

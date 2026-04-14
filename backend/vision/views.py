@@ -3,6 +3,7 @@ import logging
 from django.conf import settings
 from rest_framework import status
 from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -30,6 +31,7 @@ def get_pipeline() -> VisionPipeline:
 
 
 class AnalyzePlayerView(APIView):
+    permission_classes = [AllowAny]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, *args, **kwargs):
@@ -76,6 +78,8 @@ class AnalyzePlayerView(APIView):
 
 
 class HealthCheckView(APIView):
+    permission_classes = [AllowAny]
+
     def get(self, request):
         return Response(
             {

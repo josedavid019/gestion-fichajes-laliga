@@ -68,7 +68,9 @@ def consolidate(
             "enrichment_errors": enrichment.get("enrichment_errors", []),
         },
         "player_profile": {
-            "identified_name": external_profile.get("full_name") or ocr.player_name or "Desconocido",
+            "identified_name": external_profile.get("full_name")
+            or ocr.player_name
+            or "Desconocido",
             "age": external_profile.get("age"),
             "nationality": external_profile.get("nationality"),
             "birth_date": external_profile.get("birth_date"),
@@ -76,7 +78,8 @@ def consolidate(
             "weight": external_profile.get("weight"),
             "position": external_profile.get("position"),
             "jersey_number": ocr.jersey_number,
-            "current_club": external_profile.get("team", {}).get("name") or ocr.team_name,
+            "current_club": external_profile.get("team", {}).get("name")
+            or ocr.team_name,
             "club_logo_url": external_profile.get("team", {}).get("logo"),
             "photo_url": external_profile.get("photo_url"),
         },
