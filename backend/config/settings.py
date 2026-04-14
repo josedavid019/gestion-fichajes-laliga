@@ -11,9 +11,14 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR.parent / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -39,6 +44,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "accounts",
+    "players",
     "scouting",
     "regulations",
     "vision",
@@ -127,3 +133,14 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+AUTH_USER_MODEL = "accounts.User"
+
+APISPORTS_FOOTBALL_KEY = os.getenv("APISPORTS_FOOTBALL_KEY", "")
+RAPIDAPI_FOOTBALL_KEY = os.getenv("RAPIDAPI_FOOTBALL_KEY", "")
+THESPORTSDB_API_KEY = os.getenv("THESPORTSDB_API_KEY", "3")
+FOOTBALL_API_SEASON = int(os.getenv("FOOTBALL_API_SEASON", "2024"))
+YOLO_MODEL_PATH = os.getenv("YOLO_MODEL_PATH") or None
+YOLO_CONFIDENCE = float(os.getenv("YOLO_CONFIDENCE", "0.45"))
+TESSERACT_CMD = os.getenv("TESSERACT_CMD") or None
+VISION_INCLUDE_CROPS = os.getenv("VISION_INCLUDE_CROPS", "false").lower() == "true"
+VISION_ENABLE_ENRICHMENT = os.getenv("VISION_ENABLE_ENRICHMENT", "true").lower() == "true"

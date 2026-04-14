@@ -59,7 +59,7 @@ class DetectedObject(models.Model):
         ("other", "Otro"),
     ]
     detection_run = models.ForeignKey(
-        DetectionRun, on_delete=models.CASCADE, related_name="objects"
+        DetectionRun, on_delete=models.CASCADE, related_name="detected_objects"
     )
     player = models.ForeignKey(Player, on_delete=models.SET_NULL, null=True, blank=True)
     object_class = models.CharField(max_length=20, choices=CLASSES)

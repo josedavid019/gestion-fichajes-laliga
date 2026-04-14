@@ -12,3 +12,6 @@ scikit-learn
 requests
 sentence-transformers
 python-dotenv
+opencv-python-headless
+ultralytics
+pytesseract
