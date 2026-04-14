@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "corsheaders",
     "accounts",
     "players",
     "scouting",
@@ -55,12 +56,22 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+}
 
 ROOT_URLCONF = "config.urls"
 
@@ -133,6 +144,7 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
 AUTH_USER_MODEL = "accounts.User"
 
 APISPORTS_FOOTBALL_KEY = os.getenv("APISPORTS_FOOTBALL_KEY", "")
@@ -143,4 +155,15 @@ YOLO_MODEL_PATH = os.getenv("YOLO_MODEL_PATH") or None
 YOLO_CONFIDENCE = float(os.getenv("YOLO_CONFIDENCE", "0.45"))
 TESSERACT_CMD = os.getenv("TESSERACT_CMD") or None
 VISION_INCLUDE_CROPS = os.getenv("VISION_INCLUDE_CROPS", "false").lower() == "true"
-VISION_ENABLE_ENRICHMENT = os.getenv("VISION_ENABLE_ENRICHMENT", "true").lower() == "true"
+VISION_ENABLE_ENRICHMENT = (
+    os.getenv("VISION_ENABLE_ENRICHMENT", "true").lower() == "true"
+)
+
+RAG_API_URL = "https://paced-aorta-hesitancy.ngrok-free.dev/"
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8080",
+    "http://localhost:8000",
+]
+
+CORS_ALLOW_CREDENTIALS = True
