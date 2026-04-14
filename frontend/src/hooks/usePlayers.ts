@@ -6,6 +6,7 @@ interface Player {
   last_name: string;
   alias: string;
   age: number | null;
+  position: string;
   nationality: {
     id: number;
     name: string;
@@ -27,7 +28,7 @@ interface Player {
   photo_url: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "";
 
 export function usePlayers(params?: Record<string, string | number>) {
   return useQuery<Player[]>({
@@ -50,7 +51,7 @@ export function usePlayers(params?: Record<string, string | number>) {
           });
         }
 
-        const url = `${API_BASE_URL}/api/players/?${queryParams.toString()}`;
+        const url = `/api/players/?${queryParams.toString()}`;
         console.log(`[Page ${offset / limit + 1}] Fetching from: ${url}`);
 
         try {
@@ -96,6 +97,7 @@ export function usePlayers(params?: Record<string, string | number>) {
       return allPlayers;
     },
     retry: 1,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 0, // Always fetch fresh data (development mode)
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes (formerly cacheTime)
   });
 }
