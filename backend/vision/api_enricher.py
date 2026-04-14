@@ -101,7 +101,12 @@ class APIFootballClient:
         for league in [140, 141]:
             params = {"search": clean, "league": league, "season": self.DEFAULT_SEASON}
             try:
-                r = requests.get(f"{self.BASE_URL}/players", headers=self.headers, params=params, timeout=10)
+                r = requests.get(
+                    f"{self.BASE_URL}/players",
+                    headers=self.headers,
+                    params=params,
+                    timeout=10,
+                )
                 r.raise_for_status()
                 data = r.json()
                 responses = data.get("response") or []
@@ -146,7 +151,9 @@ class APIFootballClient:
                 logger.warning("Fallo API-Football para '%s': %s", clean, exc)
                 continue
             except (KeyError, IndexError, TypeError, ValueError) as exc:
-                logger.warning("Respuesta invalida API-Football para '%s': %s", clean, exc)
+                logger.warning(
+                    "Respuesta invalida API-Football para '%s': %s", clean, exc
+                )
                 continue
         return best_candidate
 
@@ -216,7 +223,9 @@ class TheSportsDBClient:
                     "profile_url": player.get("strWebsite"),
                     "source": "the_sports_db",
                 }
-                if APIFootballClient._is_reasonable_match(clean, candidate["full_name"]):
+                if APIFootballClient._is_reasonable_match(
+                    clean, candidate["full_name"]
+                ):
                     score = APIFootballClient._score_candidate(
                         clean,
                         candidate["full_name"],
@@ -279,21 +288,27 @@ class PlayerEnricher:
         if not football_data:
             alias_query = OCR_ALIAS_MAP.get(player_name.upper().strip())
             if alias_query:
-                football_data = self.football.search_player(alias_query, team_name=team_name)
+                football_data = self.football.search_player(
+                    alias_query, team_name=team_name
+                )
                 if football_data:
                     football_data["source"] = "api_football"
                     sources_used.append("api_football")
 
         sportsdb_data = None
         if not football_data:
-            sportsdb_data = self.the_sports_db.search_player(player_name, team_name=team_name)
+            sportsdb_data = self.the_sports_db.search_player(
+                player_name, team_name=team_name
+            )
             if sportsdb_data:
                 sources_used.append("the_sports_db")
 
         if not football_data and not sportsdb_data:
             alias_query = OCR_ALIAS_MAP.get(player_name.upper().strip())
             if alias_query:
-                sportsdb_data = self.the_sports_db.search_player(alias_query, team_name=team_name)
+                sportsdb_data = self.the_sports_db.search_player(
+                    alias_query, team_name=team_name
+                )
                 if sportsdb_data:
                     sources_used.append("the_sports_db")
 
