@@ -146,33 +146,16 @@ class OCRExtractor:
                                 break
                         return result
 
-        # Fallback: líneas con palabras largas
-        lines = clean.splitlines()
-        candidates = []
+        # Fallback: buscar nombres completos (combinación de palabras largas)
+        # Filtrar palabras válidas
+        valid_words = [w for w in all_words if len(w) >= 3 and w not in self.IGNORED]
 
-        for line in lines:
-            words = [w for w in line.split() if len(w) >= 3 and w not in self.IGNORED]
-            if not words:
-                continue
-
-            score = 0
-            long_words = [w for w in words if len(w) >= 4]
-            score += len(long_words) * 50
-
-            has_junior = any("JR" in w or "JUNIOR" in w for w in words)
-            if has_junior:
-                score += 200
-
-            if not long_words:
-                score -= 50
-
-            candidate = " ".join(words[:3])
-            candidates.append((score, candidate))
-
-        if candidates:
-            candidates.sort(reverse=True, key=lambda x: x[0])
-            if candidates[0][0] > 0:
-                return candidates[0][1]
+        if len(valid_words) >= 2:
+            # Si hay 2+ palabras, combinar las primeras 2-3 (nombre + apellido)
+            candidate = " ".join(valid_words[:3])
+            return candidate
+        elif len(valid_words) == 1:
+            return valid_words[0]
 
         return None
 
@@ -194,7 +177,11 @@ class OCRExtractor:
             h, w = image.shape[:2]
             footer = image[int(h * 0.6) :, :]
 
-            # Procesado dual
+            # ZONA SUPERIOR: buscar dorsal (está en la mitad inferior del jugador)
+            # Procesamos desde 40% hasta 80% de altura para capturar el dorsal
+            upper_zone = image[int(h * 0.25) : int(h * 0.75), :]
+
+            # Procesado dual del footer
             gray = cv2.cvtColor(footer, cv2.COLOR_BGR2GRAY)
             gray = cv2.resize(gray, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
 
@@ -215,10 +202,35 @@ class OCRExtractor:
             result.player_name = self._extract_name(combined)
             result.team_name = self._extract_team(combined)
 
-            # Dorsal
-            nums = re.findall(r"\b\d{1,2}\b", combined)
+            # Dorsal: también procesar zona superior
+            gray_upper = cv2.cvtColor(upper_zone, cv2.COLOR_BGR2GRAY)
+            gray_upper = cv2.resize(
+                gray_upper, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC
+            )
+
+            # Buscar números en zona superior (PSM 13: imagen de línea única)
+            thr_upper = cv2.adaptiveThreshold(
+                gray_upper,
+                255,
+                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                cv2.THRESH_BINARY,
+                31,
+                10,
+            )
+            txt_upper = self.run_ocr(thr_upper, config="--psm 13")
+
+            # Combinar todos los textos para búsqueda de números
+            all_text = f"{combined}\n{txt_upper}"
+
+            # Buscar números de 1-2 dígitos (dorsales válidos)
+            nums = re.findall(r"\b\d{1,2}\b", all_text)
             if nums:
-                result.jersey_number = nums[0]
+                # Tomar el primer número válido (entre 1-99)
+                for num_str in nums:
+                    num = int(num_str)
+                    if 1 <= num <= 99:  # Dorsal válido (evitar 0)
+                        result.jersey_number = num_str
+                        break
 
             # Tokens extra para el frontend
             result.extra_tokens = [w for w in combined.upper().split() if len(w) > 3][

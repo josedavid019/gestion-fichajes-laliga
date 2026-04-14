@@ -8,6 +8,45 @@ import numpy as np
 from .ocr_extractor import OCRResult
 
 
+def _translate_position(position: str | None) -> str | None:
+    """Traduce posiciones del inglés al español"""
+    if not position:
+        return None
+
+    position_map = {
+        # Portero
+        "Goalkeeper": "Portero",
+        "GK": "Portero",
+        # Defensas
+        "Defender": "Defensa",
+        "Centre-back": "Defensa Central",
+        "Left-back": "Lateral Izquierdo",
+        "Right-back": "Lateral Derecho",
+        "Fullback": "Lateral",
+        "DF": "Defensa",
+        # Centrocampistas
+        "Midfielder": "Centrocampista",
+        "Central Midfielder": "Centrocampista Central",
+        "Attacking Midfielder": "Centrocampista Atacante",
+        "Defensive Midfielder": "Centrocampista Defensivo",
+        "Left Midfielder": "Centrocampista Izquierdo",
+        "Right Midfielder": "Centrocampista Derecho",
+        "MF": "Centrocampista",
+        # Delanteros
+        "Forward": "Delantero",
+        "Striker": "Delantero",
+        "Attacker": "Delantero",
+        "Left Winger": "Extremo Izquierdo",
+        "Right Winger": "Extremo Derecho",
+        "Center Forward": "Delantero Centro",
+        "CF": "Delantero Centro",
+        "ST": "Delantero",
+        "FW": "Delantero",
+    }
+
+    return position_map.get(position, position)
+
+
 def _image_to_base64(img: np.ndarray) -> str | None:
     if img is None or img.size == 0:
         return None
@@ -71,13 +110,18 @@ def consolidate(
             "identified_name": external_profile.get("full_name")
             or ocr.player_name
             or "Desconocido",
+            "first_name": external_profile.get("first_name"),
+            "last_name": external_profile.get("last_name"),
             "age": external_profile.get("age"),
             "nationality": external_profile.get("nationality"),
             "birth_date": external_profile.get("birth_date"),
             "height": external_profile.get("height"),
+            "height_cm": external_profile.get("height_cm"),
             "weight": external_profile.get("weight"),
-            "position": external_profile.get("position"),
-            "jersey_number": ocr.jersey_number,
+            "weight_kg": external_profile.get("weight_kg"),
+            "position": _translate_position(external_profile.get("position")),
+            "status": external_profile.get("status"),
+            "jersey_number": external_profile.get("jersey_number"),
             "current_club": external_profile.get("team", {}).get("name")
             or ocr.team_name,
             "club_logo_url": external_profile.get("team", {}).get("logo"),
