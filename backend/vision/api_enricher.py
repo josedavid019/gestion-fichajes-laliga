@@ -2,6 +2,7 @@ import logging
 import os
 import re
 from difflib import SequenceMatcher
+from typing import Optional
 
 import requests
 
@@ -22,6 +23,122 @@ class APIFootballClient:
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key or os.getenv("APISPORTS_FOOTBALL_KEY", "")
         self.headers = {"x-apisports-key": self.api_key}
+
+    @staticmethod
+    def _normalize_height(height_str: str | None) -> Optional[int]:
+        """Extrae cm de strings como '183 cm' o '6'0'"""
+        if not height_str:
+            return None
+        if "cm" in str(height_str).lower():
+            try:
+                return int(re.findall(r"\d+", str(height_str))[0])
+            except (IndexError, ValueError):
+                pass
+        return None
+
+    @staticmethod
+    def _normalize_weight(weight_str: str | None) -> Optional[int]:
+        """Extrae kg de strings como '75 kg'"""
+        if not weight_str:
+            return None
+        if "kg" in str(weight_str).lower():
+            try:
+                return int(re.findall(r"\d+", str(weight_str))[0])
+            except (IndexError, ValueError):
+                pass
+        return None
+
+    @staticmethod
+    def _parse_name(full_name: str) -> tuple[str, str]:
+        """Separa nombre en first_name y last_name"""
+        if not full_name:
+            return "", ""
+        parts = full_name.strip().rsplit(" ", 1)
+        if len(parts) == 2:
+            return parts[0], parts[1]
+        return full_name, ""
+
+    def _get_injuries(self, player_id: int) -> dict | None:
+        """Obtiene estado de lesión/sanción del jugador"""
+        if not self.api_key:
+            return None
+        try:
+            params = {
+                "season": self.DEFAULT_SEASON,
+                "player": player_id,
+            }
+            r = requests.get(
+                f"{self.BASE_URL}/injuries",
+                headers=self.headers,
+                params=params,
+                timeout=10,
+            )
+            r.raise_for_status()
+            data = r.json()
+            injuries = data.get("response") or []
+            if injuries:
+                # Devolver la lesión/sanción más reciente
+                latest = injuries[0]
+                return {
+                    "status": latest.get("type"),  # injury, suspension
+                    "reason": latest.get("reason"),
+                    "from": latest.get("start"),
+                    "to": latest.get("end"),
+                }
+            return None
+        except requests.RequestException as e:
+            logger.debug("Fallo en /injuries para player_id %s: %s", player_id, e)
+            return None
+
+    def _get_jersey_number(
+        self, player_id: int, team_name: str | None = None
+    ) -> str | None:
+        """Obtiene el número de dorsal desde /players/squads"""
+        if not self.api_key or not player_id:
+            return None
+        try:
+            params = {"player": player_id}
+            r = requests.get(
+                f"{self.BASE_URL}/players/squads",
+                headers=self.headers,
+                params=params,
+                timeout=10,
+            )
+            r.raise_for_status()
+            data = r.json()
+            squads = data.get("response") or []
+
+            if not squads:
+                return None
+
+            # Intentar encontrar coincidencia exacta con team_name si se proporciona
+            if team_name:
+                for squad in squads:
+                    squad_team = squad.get("team", {})
+                    squad_team_name = squad_team.get("name")
+
+                    if (
+                        squad_team_name
+                        and self._normalize_name(team_name).lower()
+                        in self._normalize_name(squad_team_name).lower()
+                    ):
+                        players = squad.get("players") or []
+                        if players:
+                            return str(players[0].get("number"))
+
+            # Fallback: usar el primer equipo si no hay coincidencia
+            # (Los datos pueden estar desfasados o el jugador cambió recientemente)
+            squad = squads[0]
+            players = squad.get("players") or []
+            if players:
+                return str(players[0].get("number"))
+
+            return None
+        except requests.RequestException as e:
+            logger.debug("Fallo en /squads para player_id %s: %s", player_id, e)
+            return None
+
+            return None
 
     @staticmethod
     def _normalize_name(name: str) -> str:
@@ -65,27 +182,45 @@ class APIFootballClient:
         result_tokens = {token for token in result.split() if len(token) >= 3}
         overlap = query_tokens & result_tokens
 
-        score = SequenceMatcher(None, query, result).ratio() * 100
-        score += len(overlap) * 18
+        similarity = SequenceMatcher(None, query, result).ratio()
 
-        # Bonus por apellido/nombre exacto incluido en el resultado.
+        # Base score: similitud de string
+        score = similarity * 100
+
+        # Bonus por tokens en común
+        score += len(overlap) * 25
+
+        # IMPORTANTE: Si query tiene múltiples palabras (nombre completo),
+        # requiere mejor match para evitar falsos positivos
+        query_word_count = len(query_tokens)
+        if query_word_count >= 2:
+            # Búsqueda de nombre completo - ser más exigente
+            if len(overlap) == 0:
+                # Sin overlap, muy bajo score
+                score *= 0.3
+            elif len(overlap) == 1:
+                # Solo 1 palabra en común - moderado
+                score *= 0.6
+
+        # Bonus por coincidencias exactas
         if query and query in result:
-            score += 25
+            score += 30
 
-        # Prioriza explicitamente "junior/jr" cuando el OCR lo sugiera.
+        # Prioriza "junior/jr"
         if (" jr" in f" {query}" or "junior" in query) and (
             "junior" in result or " jr" in f" {result}"
         ):
-            score += 35
+            score += 40
 
         if "vini" in query and ("vinicius junior" in result or "vinicius jr" in result):
-            score += 45
+            score += 50
 
+        # Team bonus
         if team_name and candidate_team:
             normalized_team = cls._normalize_name(team_name).lower()
             normalized_candidate_team = cls._normalize_name(candidate_team).lower()
             if normalized_team and normalized_team in normalized_candidate_team:
-                score += 20
+                score += 25
 
         return score
 
@@ -115,14 +250,36 @@ class APIFootballClient:
                     goals = stats.get("goals", {})
                     passes = stats.get("passes", {})
                     games = stats.get("games", {})
+                    full_name = res["player"]["name"]
+                    first_name, last_name = self._parse_name(full_name)
+                    height_cm = self._normalize_height(res["player"].get("height"))
+                    weight_kg = self._normalize_weight(res["player"].get("weight"))
+                    position = games.get("position")
+                    player_id = res["player"].get("id")
+                    team_name = stats.get("team", {}).get("name")
+                    # Obtener dorsal desde /players/squads
+                    jersey_number = (
+                        self._get_jersey_number(player_id, team_name)
+                        if player_id
+                        else None
+                    )
+                    injuries = self._get_injuries(player_id) if player_id else None
+
                     candidate = {
-                        "full_name": res["player"]["name"],
+                        "full_name": full_name,
+                        "first_name": first_name,
+                        "last_name": last_name,
                         "nationality": res["player"]["nationality"],
                         "age": res["player"]["age"],
                         "birth_date": res["player"].get("birth", {}).get("date"),
                         "height": res["player"].get("height"),
+                        "height_cm": height_cm,
                         "weight": res["player"].get("weight"),
+                        "weight_kg": weight_kg,
+                        "position": position,
+                        "jersey_number": jersey_number,
                         "photo_url": res["player"].get("photo"),
+                        "status": injuries.get("status") if injuries else None,
                         "statistics": {
                             "appearances": games.get("appearences"),
                             "minutes_played": games.get("minutes"),
@@ -158,20 +315,27 @@ class APIFootballClient:
         return best_candidate
 
     def search_player(self, name: str, team_name: str | None = None):
+        # 1. Intentar primero con el nombre COMPLETO
         res = self._query(name, team_name=team_name)
         if res:
             return res
 
-        # 2. Si falla y tiene varias palabras, probamos quitando la primera (por si es basura como LINC, IARC)
+        # 2. Si hay múltiples palabras, intentar estrategias adicionales
         parts = name.split()
         if len(parts) >= 2:
-            # Reintentamos solo con el resto del nombre
-            res_retry = self._query(" ".join(parts[1:]), team_name=team_name)
-            if res_retry:
-                return res_retry
+            # 2a. Intentar con el ULTIMO apellido (más específico)
+            last_name = parts[-1]
+            if len(last_name) >= 4:  # Solo si apellido es largo
+                res_last = self._query(last_name, team_name=team_name)
+                if res_last:
+                    return res_last
 
-            # 3. Si sigue fallando, probamos solo con el apellido final
-            return self._query(parts[-1], team_name=team_name)
+            # 2b. Intentar quitando la primera palabra (por si es basura)
+            rest_name = " ".join(parts[1:])
+            if rest_name and rest_name != last_name:
+                res_rest = self._query(rest_name, team_name=team_name)
+                if res_rest:
+                    return res_rest
 
         return None
 
@@ -206,13 +370,24 @@ class TheSportsDBClient:
             best_candidate = None
             best_score = float("-inf")
             for player in players:
+                full_name = player.get("strPlayer")
+                first_name, last_name = (
+                    APIFootballClient._parse_name(full_name) if full_name else ("", "")
+                )
+                height_cm = APIFootballClient._normalize_height(player.get("strHeight"))
+                weight_kg = APIFootballClient._normalize_weight(player.get("strWeight"))
+
                 candidate = {
-                    "full_name": player.get("strPlayer"),
+                    "full_name": full_name,
+                    "first_name": first_name,
+                    "last_name": last_name,
                     "nationality": player.get("strNationality"),
                     "age": None,
                     "birth_date": player.get("dateBorn"),
                     "height": player.get("strHeight"),
+                    "height_cm": height_cm,
                     "weight": player.get("strWeight"),
+                    "weight_kg": weight_kg,
                     "photo_url": player.get("strThumb") or player.get("strCutout"),
                     "statistics": {},
                     "team": {
@@ -220,6 +395,8 @@ class TheSportsDBClient:
                         "logo": player.get("strTeamBadge") or player.get("strBadge"),
                     },
                     "position": player.get("strPosition"),
+                    "jersey_number": None,  # TheSportsDB no proporciona dorsal actual
+                    "status": None,  # TheSportsDB no tiene endpoint de lesiones
                     "profile_url": player.get("strWebsite"),
                     "source": "the_sports_db",
                 }

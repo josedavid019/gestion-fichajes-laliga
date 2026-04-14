@@ -20,10 +20,17 @@ type DetectionResponse = {
   };
   player_profile: {
     identified_name: string;
+    first_name: string | null;
+    last_name: string | null;
     age: number | null;
     nationality: string | null;
     birth_date: string | null;
+    height: string | null;
+    height_cm: number | null;
+    weight: string | null;
+    weight_kg: number | null;
     position: string | null;
+    status: string | null;
     jersey_number: string | null;
     current_club: string | null;
     photo_url: string | null;
@@ -144,11 +151,6 @@ export default function Detection() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-heading font-bold">Detección YOLO</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Sube una imagen y revisa detección del jugador, caja YOLO y texto OCR.
-          El nombre solo aparecerá si el OCR logra leerlo o si el backend recibe
-          una pista externa.
-        </p>
       </div>
 
       <div className="glass-card p-8">
@@ -263,13 +265,6 @@ export default function Detection() {
                   </div>
                 )}
 
-                {!result && !error && (
-                  <div className="rounded-xl border border-border/50 bg-muted/20 p-6 text-sm text-muted-foreground">
-                    Ejecuta el análisis para ver detección, OCR y los datos
-                    extraídos del jugador.
-                  </div>
-                )}
-
                 {result && (
                   <div className="space-y-4">
                     <div className="stat-card">
@@ -296,6 +291,12 @@ export default function Detection() {
                           <p className="font-medium">
                             {result.player_profile.jersey_number ||
                               "No detectado"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Posición</p>
+                          <p className="font-medium">
+                            {result.player_profile.position || "No detectado"}
                           </p>
                         </div>
                         <div>
@@ -342,45 +343,7 @@ export default function Detection() {
                           </span>{" "}
                           {result.vision_analysis.yolo.total_persons_detected}
                         </p>
-                        <p>
-                          <span className="text-muted-foreground">
-                            Nombre OCR:
-                          </span>{" "}
-                          {result.vision_analysis.ocr.player_name_raw ||
-                            "No detectado"}
-                        </p>
-                        <p>
-                          <span className="text-muted-foreground">
-                            Equipo OCR:
-                          </span>{" "}
-                          {result.vision_analysis.ocr.team_name_raw ||
-                            "No detectado"}
-                        </p>
                       </div>
-                    </div>
-
-                    <div className="stat-card">
-                      <p className="mb-3 text-sm font-semibold">
-                        Texto extraído
-                      </p>
-                      <div className="rounded-lg border border-border/40 bg-background/40 p-3 font-mono text-xs leading-5 text-muted-foreground whitespace-pre-wrap break-words">
-                        {result.vision_analysis.ocr.raw_text_preview ||
-                          "Sin texto OCR legible"}
-                      </div>
-                      {!!result.vision_analysis.ocr.extra_tokens.length && (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {result.vision_analysis.ocr.extra_tokens.map(
-                            (token) => (
-                              <span
-                                key={token}
-                                className="rounded-md bg-primary/10 px-2 py-1 text-[11px] text-primary"
-                              >
-                                {token}
-                              </span>
-                            ),
-                          )}
-                        </div>
-                      )}
                     </div>
 
                     {!!result.meta.enrichment_errors?.length && (
