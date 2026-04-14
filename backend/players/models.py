@@ -67,6 +67,7 @@ class Player(models.Model):
     current_club = models.ForeignKey(
         Club, on_delete=models.SET_NULL, null=True, blank=True
     )
+    position = models.CharField(max_length=20, blank=True)
     shirt_number = models.PositiveSmallIntegerField(null=True, blank=True)
     height_cm = models.PositiveSmallIntegerField(null=True, blank=True)
     weight_kg = models.PositiveSmallIntegerField(null=True, blank=True)
