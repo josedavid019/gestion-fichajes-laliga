@@ -1,4 +1,4 @@
-import { LayoutDashboard, Camera, Brain, TrendingUp, FileBarChart, Shield, Zap } from "lucide-react";
+import { Camera, Brain, TrendingUp, FileBarChart, Zap } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -14,11 +14,10 @@ import {
 } from "@/components/ui/sidebar";
 
 const modules = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/", icon: FileBarChart },
   { title: "Detección YOLO", url: "/detection", icon: Camera },
   { title: "Consulta IA / RAG", url: "/ai-query", icon: Brain },
   { title: "Predicción Valor", url: "/prediction", icon: TrendingUp },
-  { title: "Reportes", url: "/reports", icon: FileBarChart },
 ];
 
 export function AppSidebar() {
@@ -64,19 +63,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {!collapsed && (
-          <div className="mt-auto p-4">
-            <div className="stat-card p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Shield className="w-3.5 h-3.5 text-warning" />
-                <span className="text-[11px] font-medium text-warning">Fair Play Alert</span>
-              </div>
-              <p className="text-[10px] text-muted-foreground">
-                2 alertas activas de fair play financiero
-              </p>
-            </div>
-          </div>
-        )}
+
       </SidebarContent>
     </Sidebar>
   );
