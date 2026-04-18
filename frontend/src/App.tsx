@@ -8,6 +8,7 @@ import Detection from "./pages/Detection";
 import AIQuery from "./pages/AIQuery";
 import Prediction from "./pages/Prediction";
 import Reports from "./pages/Reports";
+import Scouting from "./pages/Scouting";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
             <Route path="/detection" element={<Detection />} />
             <Route path="/ai-query" element={<AIQuery />} />
             <Route path="/prediction" element={<Prediction />} />
+            <Route path="/scouting" element={<Scouting />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppLayout>
