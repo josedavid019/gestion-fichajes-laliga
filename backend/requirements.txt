@@ -16,3 +16,5 @@ python-dotenv
 opencv-python-headless
 ultralytics
 pytesseract
+psycopg2-binary
+pgvector
