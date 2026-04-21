@@ -39,6 +39,7 @@ export default function Reports() {
   const [filter, setFilter] = useState("");
   const [displayedCount, setDisplayedCount] = useState(ITEMS_PER_LOAD);
   const [selectedPosition, setSelectedPosition] = useState("");
+  const [selectedValueRange, setSelectedValueRange] = useState("");
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const observerTarget = useRef<HTMLDivElement>(null);
   const { data: playersData, isLoading, error } = usePlayers();
@@ -50,6 +51,15 @@ export default function Reports() {
     new Set(players.map((p) => p.position).filter(Boolean))
   ).sort() as string[];
 
+  // Define value ranges for filtering
+  const valueRanges = [
+    { label: "Todos los valores", min: 0, max: Infinity },
+    { label: "0 - 10M €", min: 0, max: 10000000 },
+    { label: "10M - 50M €", min: 10000000, max: 50000000 },
+    { label: "50M - 100M €", min: 50000000, max: 100000000 },
+    { label: "100M+ €", min: 100000000, max: Infinity },
+  ];
+
   const filtered = players.filter((p) => {
     const fullName = `${p.first_name} ${p.last_name}`.toLowerCase();
     const club = p.current_club?.name.toLowerCase() || "";
@@ -57,8 +67,18 @@ export default function Reports() {
 
     const matchesSearch = fullName.includes(filterLower) || club.includes(filterLower);
     const matchesPosition = !selectedPosition || p.position === selectedPosition;
+    
+    // Filter by market value
+    let matchesValue = true;
+    if (selectedValueRange) {
+      const range = valueRanges.find(r => r.label === selectedValueRange);
+      if (range) {
+        const playerValue = parseFloat(p.market_value_eur as string) || 0;
+        matchesValue = playerValue >= range.min && playerValue < range.max;
+      }
+    }
 
-    return matchesSearch && matchesPosition;
+    return matchesSearch && matchesPosition && matchesValue;
   });
 
   const displayedPlayers = filtered.slice(0, displayedCount);
@@ -110,11 +130,7 @@ export default function Reports() {
           <h1 className="text-2xl font-heading font-bold">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">Explora y analiza jugadores de La Liga</p>
         </div>
-        <div className="flex gap-2">
-          <Button size="sm" className="gap-2" onClick={() => window.open("https://app.powerbi.com/reportEmbed?reportId=95af94a9-e6da-47b0-99f8-91e0d40f0344&autoAuth=true&ctid=740be6bd-fd36-470e-94d9-0f0c777fadb9&actionBarEnabled=true", "_blank")}>
-            <BarChart3 className="w-3.5 h-3.5" /> Power BI
-          </Button>
-        </div>
+
       </div>
 
       {/* Summary KPIs */}
@@ -154,6 +170,20 @@ export default function Reports() {
             {uniquePositions.map((pos) => (
               <option key={pos} value={pos}>
                 {pos}
+              </option>
+            ))}
+          </select>
+          <select
+            value={selectedValueRange}
+            onChange={(e) => {
+              setSelectedValueRange(e.target.value);
+              setDisplayedCount(ITEMS_PER_LOAD);
+            }}
+            className="px-3 py-2 bg-muted/30 border border-border/50 rounded text-sm"
+          >
+            {valueRanges.map((range) => (
+              <option key={range.label} value={range.label}>
+                {range.label}
               </option>
             ))}
           </select>
@@ -218,10 +248,10 @@ export default function Reports() {
         )}
       </div>
 
-      {/* Power BI Dashboard */}
+      {/* La Liga Report */}
       <PowerBIDashboard
-        title="Gráficos y Análisis en Profundidad"
-        reportId="95af94a9-e6da-47b0-99f8-91e0d40f0344"
+        title="Laliga"
+        reportId="e5773083-c8dc-4428-abba-40cc50e7f442"
         ctid="740be6bd-fd36-470e-94d9-0f0c777fadb9"
       />
 
