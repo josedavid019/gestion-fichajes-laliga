@@ -13,8 +13,8 @@ from .video_analyzer import VideoAnalyzer
 logger = logging.getLogger(__name__)
 
 PLAYER_SEARCH_MAP = {
+    "robert-lewandowski": {"name": "Robert Lewandowski", "team": "Barcelona"},
     "lamine-yamal": {"name": "Lamine Yamal", "team": "Barcelona"},
-    "luiz-junior": {"name": "luiz junior", "team": "Villarreal"},
     "marc-bernal": {"name": "Marc Bernal", "team": "Barcelona"},
     "valentin-rosier": {"name": "Valentin Rosier", "team": "Leganes"},
     "victor-garcia": {"name": "Victor Garcia", "team": None},
