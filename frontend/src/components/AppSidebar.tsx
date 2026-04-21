@@ -1,4 +1,4 @@
-import { Camera, Brain, TrendingUp, FileBarChart, Zap, Users } from "lucide-react";
+import { Camera, Brain, FileBarChart, Zap, Users } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -17,7 +17,6 @@ const modules = [
   { title: "Dashboard", url: "/", icon: FileBarChart },
   { title: "Detección YOLO", url: "/detection", icon: Camera },
   { title: "Consulta IA / RAG", url: "/ai-query", icon: Brain },
-  { title: "Predicción Valor", url: "/prediction", icon: TrendingUp },
   { title: "Gestión de Jugadores", url: "/scouting", icon: Users },
 ];
 
@@ -35,8 +34,12 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div>
-              <h2 className="font-heading text-sm font-bold text-foreground">ScoutAI</h2>
-              <p className="text-[10px] text-muted-foreground">Football Intelligence</p>
+              <h2 className="font-heading text-sm font-bold text-foreground">
+                ScoutAI
+              </h2>
+              <p className="text-[10px] text-muted-foreground">
+                Football Intelligence
+              </p>
             </div>
           )}
         </div>
@@ -55,7 +58,9 @@ export function AppSidebar() {
                       activeClassName="bg-primary/10 text-primary font-medium border-l-2 border-primary"
                     >
                       <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span className="text-sm">{item.title}</span>}
+                      {!collapsed && (
+                        <span className="text-sm">{item.title}</span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -63,8 +68,6 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-
       </SidebarContent>
     </Sidebar>
   );
