@@ -9,22 +9,18 @@ from .ocr_extractor import OCRResult
 
 
 def _translate_position(position: str | None) -> str | None:
-    """Traduce posiciones del inglés al español"""
     if not position:
         return None
 
     position_map = {
-        # Portero
         "Goalkeeper": "Portero",
         "GK": "Portero",
-        # Defensas
         "Defender": "Defensa",
         "Centre-back": "Defensa Central",
         "Left-back": "Lateral Izquierdo",
         "Right-back": "Lateral Derecho",
         "Fullback": "Lateral",
         "DF": "Defensa",
-        # Centrocampistas
         "Midfielder": "Centrocampista",
         "Central Midfielder": "Centrocampista Central",
         "Attacking Midfielder": "Centrocampista Atacante",
@@ -32,7 +28,6 @@ def _translate_position(position: str | None) -> str | None:
         "Left Midfielder": "Centrocampista Izquierdo",
         "Right Midfielder": "Centrocampista Derecho",
         "MF": "Centrocampista",
-        # Delanteros
         "Forward": "Delantero",
         "Striker": "Delantero",
         "Attacker": "Delantero",
@@ -58,16 +53,20 @@ def _image_to_base64(img: np.ndarray) -> str | None:
 
 def consolidate(
     detection: dict,
+    face: dict,
     ocr: OCRResult,
     enrichment: dict,
     original_image: np.ndarray,
+    media_type: str = "image",
+    identity_source: str | None = None,
     include_crops: bool = False,
 ) -> dict:
     now = datetime.now(timezone.utc).isoformat()
     request_id = str(uuid.uuid4())[:12]
     api_football = enrichment.get("api_football") or {}
     the_sports_db = enrichment.get("the_sports_db") or {}
-    external_profile = api_football or the_sports_db
+    local_database = enrichment.get("local_database") or {}
+    external_profile = api_football or the_sports_db or local_database
     api_stats = external_profile.get("statistics") or {}
     data_sources = enrichment.get("sources_used") or []
 
@@ -78,6 +77,17 @@ def consolidate(
             "bounding_box": detection.get("bbox"),
             "total_persons_detected": len(detection.get("all_detections", [])),
             "error": detection.get("error"),
+        },
+        "face_recognition": {
+            "enabled": bool(face.get("method"))
+            and face.get("method") != "face_detection_only",
+            "method": face.get("method"),
+            "status": face.get("status"),
+            "faces_detected": face.get("faces_detected", 0),
+            "face_boxes": face.get("face_boxes", []),
+            "best_match": face.get("best_match"),
+            "predictions": face.get("predictions", []),
+            "error": face.get("error"),
         },
         "ocr": {
             "jersey_number": ocr.jersey_number,
@@ -99,8 +109,10 @@ def consolidate(
         "meta": {
             "request_id": request_id,
             "processed_at": now,
-            "module_version": "1.0.0",
-            "pipeline": ["yolo_detection", "ocr_extraction"]
+            "module_version": "1.1.0",
+            "media_type": media_type,
+            "identity_source": identity_source,
+            "pipeline": ["yolo_detection", "face_recognition", "ocr_extraction"]
             + (["api_enrichment"] if external_profile else []),
             "data_sources": data_sources,
             "enrichment_source": enrichment.get("source"),
@@ -108,6 +120,7 @@ def consolidate(
         },
         "player_profile": {
             "identified_name": external_profile.get("full_name")
+            or (face.get("best_match") or {}).get("label")
             or ocr.player_name
             or "Desconocido",
             "first_name": external_profile.get("first_name"),
@@ -121,7 +134,7 @@ def consolidate(
             "weight_kg": external_profile.get("weight_kg"),
             "position": _translate_position(external_profile.get("position")),
             "status": external_profile.get("status"),
-            "jersey_number": external_profile.get("jersey_number"),
+            "jersey_number": external_profile.get("jersey_number") or ocr.jersey_number,
             "current_club": external_profile.get("team", {}).get("name")
             or ocr.team_name,
             "club_logo_url": external_profile.get("team", {}).get("logo"),
@@ -155,5 +168,6 @@ def consolidate(
         "raw_api_responses": {
             "api_football": api_football or None,
             "the_sports_db": the_sports_db or None,
+            "local_database": local_database or None,
         },
     }

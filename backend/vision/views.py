@@ -24,6 +24,12 @@ def get_pipeline() -> VisionPipeline:
             yolo_model_path=getattr(settings, "YOLO_MODEL_PATH", None),
             yolo_confidence=getattr(settings, "YOLO_CONFIDENCE", 0.45),
             tesseract_cmd=getattr(settings, "TESSERACT_CMD", None),
+            roboflow_api_key=getattr(settings, "ROBOFLOW_API_KEY", None),
+            roboflow_project_id=getattr(settings, "ROBOFLOW_PROJECT_ID", None),
+            roboflow_version=getattr(settings, "ROBOFLOW_MODEL_VERSION", None),
+            roboflow_confidence=getattr(settings, "ROBOFLOW_CONFIDENCE", 0.6),
+            video_sample_seconds=getattr(settings, "VISION_VIDEO_SAMPLE_SECONDS", 1.0),
+            video_max_frames=getattr(settings, "VISION_VIDEO_MAX_FRAMES", 8),
             include_crops_in_response=getattr(settings, "VISION_INCLUDE_CROPS", False),
             enable_enrichment=getattr(settings, "VISION_ENABLE_ENRICHMENT", True),
         )
@@ -35,27 +41,51 @@ class AnalyzePlayerView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, *args, **kwargs):
-        image_file = request.FILES.get("image")
-        if not image_file:
+        media_file = (
+            request.FILES.get("image")
+            or request.FILES.get("video")
+            or request.FILES.get("media")
+            or request.FILES.get("file")
+        )
+        if not media_file:
             return Response(
-                {"error": "Se requiere el campo 'image' con la imagen del jugador"},
+                {
+                    "error": (
+                        "Se requiere un archivo en 'image', 'video', 'media' o 'file'"
+                    )
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        max_size = 10 * 1024 * 1024
-        if image_file.size > max_size:
+        media_type = _resolve_media_type(media_file)
+        max_size = 50 * 1024 * 1024 if media_type == "video" else 10 * 1024 * 1024
+        if media_file.size > max_size:
             return Response(
-                {"error": "La imagen no puede superar los 10 MB"},
+                {
+                    "error": (
+                        "El video no puede superar los 50 MB"
+                        if media_type == "video"
+                        else "La imagen no puede superar los 10 MB"
+                    )
+                },
                 status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             )
 
         player_name_hint = request.data.get("name", "").strip() or None
 
         try:
-            result = get_pipeline().run(
-                image_file.read(),
-                player_name_hint=player_name_hint,
-            )
+            pipeline = get_pipeline()
+            file_bytes = media_file.read()
+            if media_type == "video":
+                result = pipeline.run_video(
+                    file_bytes,
+                    player_name_hint=player_name_hint,
+                )
+            else:
+                result = pipeline.run(
+                    file_bytes,
+                    player_name_hint=player_name_hint,
+                )
         except Exception as exc:
             logger.exception("Error en pipeline de vision: %s", exc)
             return Response(
@@ -65,6 +95,17 @@ class AnalyzePlayerView(APIView):
 
         if result.get("meta", {}).get("error"):
             return Response(result, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+        face_status = (
+            result.get("vision_analysis", {})
+            .get("face_recognition", {})
+            .get("status")
+        )
+        if face_status == "service_unconfigured":
+            return Response(
+                {"error": "Roboflow no esta configurado en el backend"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         yolo_ok = (
             result.get("vision_analysis", {})
@@ -85,10 +126,20 @@ class HealthCheckView(APIView):
             {
                 "status": "ok",
                 "module": "vision",
-                "version": "1.0.0",
+                "version": "1.1.0",
                 "endpoints": {
-                    "analyze_player": "/api/vision/analyze-player/ [POST]",
+                    "analyze_player": "/api/vision/analyze-player/ [POST image|video]",
                     "health": "/api/vision/health/ [GET]",
                 },
             }
         )
+
+
+def _resolve_media_type(uploaded_file) -> str:
+    content_type = (getattr(uploaded_file, "content_type", "") or "").lower()
+    name = (getattr(uploaded_file, "name", "") or "").lower()
+    if content_type.startswith("video/") or name.endswith(
+        (".mp4", ".mov", ".avi", ".mkv", ".webm")
+    ):
+        return "video"
+    return "image"

@@ -98,17 +98,25 @@ class ResponseBuilderTests(TestCase):
             "all_detections": [],
             "error": "No player",
         }
+        face = {
+            "success": False,
+            "method": "face_detection_only",
+            "status": "service_unconfigured",
+            "faces_detected": 0,
+            "face_boxes": [],
+            "best_match": None,
+            "predictions": [],
+            "error": "No face",
+        }
         ocr = OCRResult(raw_text="", jersey_number="10", player_name="MESSI")
         enrichment = {
             "api_football": None,
-            "transfermarkt": None,
-            "openligadb_team": None,
-            "laliga_standings": None,
+            "the_sports_db": None,
             "enrichment_errors": [],
         }
         dummy_img = np.ones((300, 200, 3), dtype=np.uint8)
 
-        result = consolidate(detection, ocr, enrichment, dummy_img)
+        result = consolidate(detection, face, ocr, enrichment, dummy_img)
 
         self.assertIn("meta", result)
         self.assertIn("player_profile", result)
@@ -116,8 +124,23 @@ class ResponseBuilderTests(TestCase):
         self.assertIn("market_value", result)
         self.assertIn("league_info", result)
         self.assertIn("vision_analysis", result)
+        self.assertIn("face_recognition", result["vision_analysis"])
+        self.assertEqual(
+            result["vision_analysis"]["face_recognition"]["status"],
+            "service_unconfigured",
+        )
         self.assertEqual(result["meta"]["data_sources"], [])
         self.assertEqual(result["raw_api_responses"]["api_football"], None)
+
+
+class VisionPipelineMappingTests(TestCase):
+    def test_map_face_label_returns_search_name_and_team(self):
+        from vision.pipeline import _map_face_label
+
+        mapped = _map_face_label("vinicius-junior")
+
+        self.assertEqual(mapped["name"], "Vinicius Junior")
+        self.assertEqual(mapped["team"], "Real Madrid")
 
 
 @override_settings(ROOT_URLCONF="config.urls")
@@ -141,7 +164,7 @@ class AnalyzePlayerEndpointTests(TestCase):
     def test_valid_image_returns_json(self, mock_get_pipeline):
         mock_pipeline = MagicMock()
         mock_pipeline.run.return_value = {
-            "meta": {"request_id": "test123", "error": False},
+            "meta": {"request_id": "test123", "error": False, "media_type": "image"},
             "player_profile": {
                 "identified_name": "Lionel Messi",
                 "jersey_number": "10",
@@ -157,6 +180,10 @@ class AnalyzePlayerEndpointTests(TestCase):
                     "total_persons_detected": 1,
                     "error": None,
                 },
+                "face_recognition": {
+                    "status": "identified",
+                    "best_match": {"label": "Lionel Messi", "confidence": 0.93}
+                },
                 "ocr": {"player_name_raw": None},
             },
         }
@@ -170,6 +197,39 @@ class AnalyzePlayerEndpointTests(TestCase):
         self.assertEqual(
             response.json()["player_profile"]["identified_name"], "Lionel Messi"
         )
+
+    @patch("vision.views.get_pipeline")
+    def test_video_uses_video_pipeline(self, mock_get_pipeline):
+        mock_pipeline = MagicMock()
+        mock_pipeline.run_video.return_value = {
+            "meta": {"request_id": "vid123", "error": False, "media_type": "video"},
+            "player_profile": {"identified_name": "Vinicius Junior"},
+            "statistics": {"goals": 11},
+            "market_value": {"current_value_eur": None},
+            "league_info": {"league": "LaLiga"},
+            "vision_analysis": {
+                "yolo": {
+                    "player_detected": True,
+                    "confidence": 0.88,
+                    "bounding_box": None,
+                    "total_persons_detected": 1,
+                    "error": None,
+                },
+                "face_recognition": {
+                    "status": "identified",
+                    "best_match": {"label": "Vinicius Junior", "confidence": 0.9}
+                },
+                "ocr": {"player_name_raw": None},
+            },
+        }
+        mock_get_pipeline.return_value = mock_pipeline
+
+        video_file = io.BytesIO(b"fake-video")
+        video_file.name = "interview.mp4"
+        response = self.client.post(self.url, {"video": video_file}, format="multipart")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mock_pipeline.run_video.assert_called_once()
 
     def test_health_endpoint(self):
         response = self.client.get(reverse("vision_health"))
