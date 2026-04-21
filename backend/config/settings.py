@@ -160,10 +160,16 @@ FOOTBALL_API_SEASON = int(os.getenv("FOOTBALL_API_SEASON", "2024"))
 YOLO_MODEL_PATH = os.getenv("YOLO_MODEL_PATH") or None
 YOLO_CONFIDENCE = float(os.getenv("YOLO_CONFIDENCE", "0.45"))
 TESSERACT_CMD = os.getenv("TESSERACT_CMD") or None
+ROBOFLOW_API_KEY = os.getenv("ROBOFLOW_API_KEY") or None
+ROBOFLOW_PROJECT_ID = os.getenv("ROBOFLOW_PROJECT_ID") or None
+ROBOFLOW_MODEL_VERSION = os.getenv("ROBOFLOW_MODEL_VERSION") or None
+ROBOFLOW_CONFIDENCE = float(os.getenv("ROBOFLOW_CONFIDENCE", "0.60"))
 VISION_INCLUDE_CROPS = os.getenv("VISION_INCLUDE_CROPS", "false").lower() == "true"
 VISION_ENABLE_ENRICHMENT = (
     os.getenv("VISION_ENABLE_ENRICHMENT", "true").lower() == "true"
 )
+VISION_VIDEO_SAMPLE_SECONDS = float(os.getenv("VISION_VIDEO_SAMPLE_SECONDS", "1.0"))
+VISION_VIDEO_MAX_FRAMES = int(os.getenv("VISION_VIDEO_MAX_FRAMES", "8"))
 
 RAG_API_URL = "https://paced-aorta-hesitancy.ngrok-free.dev/"
 
