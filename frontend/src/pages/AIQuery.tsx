@@ -15,11 +15,11 @@ const BASE = import.meta.env.VITE_DJANGO_URL ?? "http://localhost:8000";
 const RAG = `${BASE}/api/rag`;
 
 const QUICK_CHIPS = [
-  "¿Cuál es el límite salarial según el control económico de LaLiga?",
-  "¿Qué dice el reglamento sobre traspasos internacionales?",
-  "Requisitos de inscripción de jugadores sub-23",
-  "Duración máxima de un contrato profesional",
-  "Sanciones por incumplir el fair play financiero",
+  "¿Cómo se calcula el límite salarial o tope de gasto de un club en LaLiga?",
+  "¿Qué requisitos debe cumplir un jugador sub-23 para ser inscrito en la plantilla de un club de LaLiga?",
+  "¿Qué documentos exige la FIFA para completar una transferencia internacional de un jugador profesional?",
+  "¿Qué sanciones puede imponer LaLiga a un club que incumpla el control económico o supere su límite de gasto?",
+  "¿Cuánto tiempo dura máximo un contrato de jugador profesional?",
 ];
 
 export default function AIQuery() {
