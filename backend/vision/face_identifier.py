@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class FaceIdentifier:
-    AMBIGUOUS_PAIR = {"luiz-junior", "victor-garcia"}
+    AMBIGUOUS_PAIR = set()
 
     def __init__(
         self,
@@ -228,7 +228,7 @@ class FaceIdentifier:
 
     @classmethod
     def _is_ambiguous_pair(cls, top_predictions: list[dict]) -> bool:
-        if len(top_predictions) < 2:
+        if not cls.AMBIGUOUS_PAIR or len(top_predictions) < 2:
             return False
         labels = {item.get("label") for item in top_predictions[:2]}
         if labels != cls.AMBIGUOUS_PAIR:
