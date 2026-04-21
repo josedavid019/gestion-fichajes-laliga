@@ -5,6 +5,9 @@ from difflib import SequenceMatcher
 from typing import Optional
 
 import requests
+from django.db.models import Q
+
+from players.models import Player
 
 logger = logging.getLogger(__name__)
 
@@ -490,13 +493,104 @@ class PlayerEnricher:
                     sources_used.append("the_sports_db")
 
         if not sportsdb_data and not football_data:
-            errors.append("No se encontraron datos externos para el jugador")
+            local_data = self._search_local_player(player_name, team_name=team_name)
+            if local_data:
+                sources_used.append("local_database")
+            else:
+                errors.append("No se encontraron datos externos para el jugador")
 
         return {
             "api_football": football_data,
             "the_sports_db": sportsdb_data,
+            "local_database": local_data if 'local_data' in locals() else None,
             "query": {"name": player_name, "team": team_name},
             "source": sources_used[0] if sources_used else None,
             "sources_used": sources_used,
             "enrichment_errors": errors,
+        }
+
+    def _search_local_player(self, player_name: str, team_name: str | None = None) -> dict | None:
+        normalized_name = APIFootballClient._normalize_name(player_name)
+        if len(normalized_name) < 3:
+            return None
+
+        tokens = [token for token in normalized_name.split() if len(token) >= 3]
+        query = Q()
+        for token in tokens:
+            query |= (
+                Q(first_name__icontains=token)
+                | Q(last_name__icontains=token)
+                | Q(alias__icontains=token)
+            )
+
+        if not query:
+            return None
+
+        candidates = (
+            Player.objects.select_related("current_club", "nationality")
+            .filter(query)
+        )
+        if team_name:
+            candidates = candidates.filter(current_club__name__icontains=team_name)
+
+        best_candidate = None
+        best_score = float("-inf")
+        for player in candidates[:25]:
+            full_name = f"{player.first_name} {player.last_name}".strip()
+            score = APIFootballClient._score_candidate(
+                normalized_name,
+                full_name,
+                team_name=team_name,
+                candidate_team=(player.current_club.name if player.current_club else None),
+            )
+            if score > best_score:
+                best_score = score
+                best_candidate = player
+
+        if not best_candidate:
+            return None
+
+        return {
+            "full_name": f"{best_candidate.first_name} {best_candidate.last_name}".strip(),
+            "first_name": best_candidate.first_name,
+            "last_name": best_candidate.last_name,
+            "nationality": (
+                best_candidate.nationality.name if best_candidate.nationality else None
+            ),
+            "age": None,
+            "birth_date": (
+                best_candidate.date_of_birth.isoformat()
+                if best_candidate.date_of_birth
+                else None
+            ),
+            "height": (
+                f"{best_candidate.height_cm} cm" if best_candidate.height_cm else None
+            ),
+            "height_cm": best_candidate.height_cm,
+            "weight": (
+                f"{best_candidate.weight_kg} kg" if best_candidate.weight_kg else None
+            ),
+            "weight_kg": best_candidate.weight_kg,
+            "position": best_candidate.position,
+            "jersey_number": (
+                str(best_candidate.shirt_number)
+                if best_candidate.shirt_number is not None
+                else None
+            ),
+            "photo_url": best_candidate.photo_url,
+            "status": best_candidate.status,
+            "statistics": {},
+            "team": {
+                "name": (
+                    best_candidate.current_club.name
+                    if best_candidate.current_club
+                    else None
+                ),
+                "logo": (
+                    best_candidate.current_club.logo_url
+                    if best_candidate.current_club
+                    else None
+                ),
+            },
+            "source": "local_database",
         }
