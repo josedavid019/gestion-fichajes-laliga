@@ -51,7 +51,7 @@ export function usePlayers(params?: Record<string, string | number>) {
           });
         }
 
-        const url = `http://127.0.0.1:8000/api/players/?${queryParams.toString()}`;
+        const url = `http://127.0.0.1:8000http://127.0.0.1:8000/api/players/?${queryParams.toString()}`;
         console.log(`[Page ${offset / limit + 1}] Fetching from: ${url}`);
 
         try {
@@ -82,8 +82,8 @@ export function usePlayers(params?: Record<string, string | number>) {
             allPlayers = [...allPlayers, ...batch];
             offset += limit;
 
-            // Safety check - allow up to 1000 players
-            if (allPlayers.length >= 1000) {
+            // Safety check
+            if (allPlayers.length >= 500) {
               hasMore = false;
             }
           }

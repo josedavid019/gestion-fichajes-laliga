@@ -1,126 +1,71 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
-import { Plus, X, TrendingUp, DollarSign, Users } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Plus, X, Users } from "lucide-react";
+import { usePlayers } from "@/hooks/usePlayers";
 
 interface Player {
-  id: string;
-  name: string;
+  id: number;
+  first_name: string;
+  last_name: string;
+  alias: string;
+  age: number | null;
   position: string;
-  age: number;
-  club: string;
-  nationality: string;
-  marketValue: number;
-  predictedValue: number;
-  stats: {
-    goals: number;
-    assists: number;
-    matches: number;
-    rating: number;
-  };
-  form: { month: string; value: number }[];
-  attributes: {
-    pace: number;
-    shooting: number;
-    passing: number;
-    dribbling: number;
-    defense: number;
-    physical: number;
-  };
+  nationality: {
+    id: number;
+    name: string;
+    code: string;
+    flag_url: string;
+  } | null;
+  current_club: {
+    id: number;
+    name: string;
+    city: string;
+    logo_url: string;
+  } | null;
+  shirt_number: number | null;
+  height_cm: number | null;
+  weight_kg: number | null;
+  preferred_foot: string;
+  status: string;
+  market_value_eur: string | null;
+  photo_url: string;
 }
 
-const mockPlayers: Player[] = [
-  {
-    id: "1",
-    name: "Vinícius Júnior",
-    position: "LW",
-    age: 24,
-    club: "Real Madrid",
-    nationality: "Brasil",
-    marketValue: 180,
-    predictedValue: 200,
-    stats: { goals: 15, assists: 8, matches: 28, rating: 8.5 },
-    form: [
-      { month: "Ago", value: 150 },
-      { month: "Sep", value: 155 },
-      { month: "Oct", value: 165 },
-      { month: "Nov", value: 175 },
-      { month: "Dic", value: 185 },
-    ],
-    attributes: { pace: 94, shooting: 86, passing: 81, dribbling: 91, defense: 40, physical: 78 },
-  },
-  {
-    id: "2",
-    name: "Jude Bellingham",
-    position: "CM",
-    age: 21,
-    club: "Real Madrid",
-    nationality: "Inglaterra",
-    marketValue: 120,
-    predictedValue: 160,
-    stats: { goals: 8, assists: 5, matches: 25, rating: 8.2 },
-    form: [
-      { month: "Ago", value: 90 },
-      { month: "Sep", value: 105 },
-      { month: "Oct", value: 115 },
-      { month: "Nov", value: 125 },
-      { month: "Dic", value: 135 },
-    ],
-    attributes: { pace: 85, shooting: 76, passing: 84, dribbling: 80, defense: 79, physical: 87 },
-  },
-  {
-    id: "3",
-    name: "Kylian Mbappé",
-    position: "ST",
-    age: 25,
-    club: "Real Madrid",
-    nationality: "Francia",
-    marketValue: 200,
-    predictedValue: 190,
-    stats: { goals: 18, assists: 6, matches: 30, rating: 8.7 },
-    form: [
-      { month: "Ago", value: 195 },
-      { month: "Sep", value: 200 },
-      { month: "Oct", value: 205 },
-      { month: "Nov", value: 200 },
-      { month: "Dic", value: 190 },
-    ],
-    attributes: { pace: 97, shooting: 94, passing: 80, dribbling: 92, defense: 38, physical: 76 },
-  },
-];
-
 export const PlayerComparator = () => {
-  const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([mockPlayers[0]]);
+  const { data: allPlayers = [], isLoading, error } = usePlayers();
+  const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
   const addPlayer = (player: Player) => {
-    if (!selectedPlayers.find((p) => p.id === player.id)) {
+    if (selectedPlayers.length < 6 && !selectedPlayers.find((p) => p.id === player.id)) {
       setSelectedPlayers([...selectedPlayers, player]);
     }
   };
 
-  const removePlayer = (id: string) => {
+  const removePlayer = (id: number) => {
     setSelectedPlayers(selectedPlayers.filter((p) => p.id !== id));
   };
 
-  const availablePlayers = mockPlayers.filter(
+  const availablePlayers = allPlayers.filter(
     (p) =>
       !selectedPlayers.find((sp) => sp.id === p.id) &&
-      (p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.club.toLowerCase().includes(searchTerm.toLowerCase()))
+      (searchTerm === "" ||
+        p.alias.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.current_club?.name && p.current_club.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        `${p.first_name} ${p.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const comparisonData = selectedPlayers.map((p) => ({
-    name: p.name.split(" ")[p.name.split(" ").length - 1],
-    "Valor Actual": p.marketValue,
-    "Predicción": p.predictedValue,
-    Diferencia: p.predictedValue - p.marketValue,
-  }));
+  const comparisonData = selectedPlayers
+    .sort((a, b) => (parseFloat(b.market_value_eur || "0") - parseFloat(a.market_value_eur || "0")))
+    .map((p) => ({
+      name: p.alias || `${p.first_name} ${p.last_name}`,
+      "Valor de Mercado": parseFloat(p.market_value_eur || "0") / 1000000,
+    }));
 
   return (
     <div className="space-y-6">
@@ -130,12 +75,12 @@ export const PlayerComparator = () => {
             <Users className="w-5 h-5" />
             Comparador de Jugadores
           </CardTitle>
-          <CardDescription>Selecciona y compara jugadores, visualiza predicciones de valor de mercado</CardDescription>
+          <CardDescription>Selecciona y compara hasta 6 jugadores registrados</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Selector de Jugadores */}
           <div className="space-y-3">
-            <label className="text-sm font-medium">Agregar Jugadores</label>
+            <label className="text-sm font-medium">Agregar Jugadores ({selectedPlayers.length}/6)</label>
             <div className="flex gap-2">
               <Input
                 placeholder="Buscar por nombre o club..."
@@ -145,30 +90,35 @@ export const PlayerComparator = () => {
               />
             </div>
 
-            {availablePlayers.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+            {isLoading ? (
+              <p className="text-center py-4">Cargando jugadores...</p>
+            ) : availablePlayers.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-96 overflow-y-auto">
                 {availablePlayers.map((player) => (
                   <Button
                     key={player.id}
                     variant="outline"
                     className="justify-start text-left h-auto py-2"
                     onClick={() => addPlayer(player)}
+                    disabled={selectedPlayers.length >= 6}
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     <div className="flex-1">
-                      <div className="font-medium text-sm">{player.name}</div>
-                      <div className="text-xs text-muted-foreground">{player.club}</div>
+                      <div className="font-medium text-sm">{player.alias || `${player.first_name} ${player.last_name}`}</div>
+                      <div className="text-xs text-muted-foreground">{player.current_club?.name || "Sin club"}</div>
                     </div>
                   </Button>
                 ))}
               </div>
+            ) : (
+              <p className="text-center py-4 text-muted-foreground">No se encontraron jugadores disponibles</p>
             )}
           </div>
 
           {/* Jugadores Seleccionados */}
           <div className="space-y-3">
             <label className="text-sm font-medium">Jugadores Seleccionados ({selectedPlayers.length})</label>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {selectedPlayers.map((player) => (
                 <Card key={player.id} className="relative">
                   <Button
@@ -180,27 +130,24 @@ export const PlayerComparator = () => {
                     <X className="w-4 h-4" />
                   </Button>
                   <CardContent className="pt-4 pb-3">
-                    <h3 className="font-semibold text-sm">{player.name}</h3>
-                    <p className="text-xs text-muted-foreground">{player.position} • {player.age} años</p>
-                    <p className="text-xs text-muted-foreground mb-2">{player.club}</p>
+                    <h3 className="font-semibold text-sm">{player.alias || `${player.first_name} ${player.last_name}`}</h3>
+                    <p className="text-xs text-muted-foreground">{player.position || "N/A"} • {player.age ? `${player.age} años` : "Edad N/A"}</p>
+                    <p className="text-xs text-muted-foreground mb-2">{player.current_club?.name || "Sin club"}</p>
                     
                     <div className="space-y-1 text-xs">
                       <div className="flex justify-between">
-                        <span>Valor Actual:</span>
-                        <span className="font-medium">${player.marketValue}M</span>
+                        <span>Valor:</span>
+                        <span className="font-medium">
+                          {player.market_value_eur ? `€${(parseFloat(player.market_value_eur) / 1000000).toFixed(1)}M` : "N/A"}
+                        </span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Predicción:</span>
-                        <span className="font-medium text-green-600">${player.predictedValue}M</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Cambio:</span>
+                        <span>Estado:</span>
                         <Badge
-                          variant={player.predictedValue >= player.marketValue ? "default" : "secondary"}
+                          variant={player.status === "active" ? "default" : "secondary"}
                           className="text-xs"
                         >
-                          {player.predictedValue >= player.marketValue ? "+" : ""}
-                          {player.predictedValue - player.marketValue}M
+                          {player.status}
                         </Badge>
                       </div>
                     </div>
@@ -210,13 +157,11 @@ export const PlayerComparator = () => {
             </div>
           </div>
 
-          {/* Tabs de Comparación */}
-          {selectedPlayers.length > 0 && (
+          {/* Comparación */}
+          {selectedPlayers.length >= 2 && (
             <Tabs defaultValue="value" className="w-full">
               <TabsList>
                 <TabsTrigger value="value">Valor de Mercado</TabsTrigger>
-                <TabsTrigger value="form">Forma</TabsTrigger>
-                <TabsTrigger value="attributes">Atributos</TabsTrigger>
                 <TabsTrigger value="stats">Estadísticas</TabsTrigger>
               </TabsList>
 
@@ -227,11 +172,10 @@ export const PlayerComparator = () => {
                     <BarChart data={comparisonData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
-                      <YAxis label={{ value: "Valor (Millones $)", angle: -90, position: "insideLeft" }} />
-                      <Tooltip />
+                      <YAxis label={{ value: "Valor (Millones €)", angle: -90, position: "insideLeft" }} />
+                      <Tooltip formatter={(value) => [`€${value}M`, "Valor de Mercado"]} />
                       <Legend />
-                      <Bar dataKey="Valor Actual" fill="#3b82f6" radius={[8, 8, 0, 0]} />
-                      <Bar dataKey="Predicción" fill="#10b981" radius={[8, 8, 0, 0]} />
+                      <Bar dataKey="Valor de Mercado" fill="#3b82f6" radius={[8, 8, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -242,102 +186,66 @@ export const PlayerComparator = () => {
                     <thead>
                       <tr className="border-b">
                         <th className="text-left py-2 px-3 font-medium">Jugador</th>
-                        <th className="text-right py-2 px-3 font-medium">Valor Actual</th>
-                        <th className="text-right py-2 px-3 font-medium">Predicción</th>
-                        <th className="text-right py-2 px-3 font-medium">Cambio</th>
-                        <th className="text-right py-2 px-3 font-medium">% Cambio</th>
+                        <th className="text-right py-2 px-3 font-medium">Valor de Mercado</th>
+                        <th className="text-right py-2 px-3 font-medium">Ranking</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedPlayers.map((player) => {
-                        const change = player.predictedValue - player.marketValue;
-                        const percentChange = ((change / player.marketValue) * 100).toFixed(1);
-                        return (
-                          <tr key={player.id} className="border-b hover:bg-muted/50">
-                            <td className="py-3 px-3 font-medium">{player.name}</td>
-                            <td className="text-right py-3 px-3">${player.marketValue}M</td>
-                            <td className="text-right py-3 px-3 font-semibold text-green-600">${player.predictedValue}M</td>
-                            <td className="text-right py-3 px-3">
-                              <Badge variant={change >= 0 ? "default" : "secondary"}>
-                                {change >= 0 ? "+" : ""}{change}M
-                              </Badge>
-                            </td>
-                            <td className="text-right py-3 px-3 font-medium text-green-600">{percentChange}%</td>
-                          </tr>
-                        );
-                      })}
+                      {selectedPlayers
+                        .sort((a, b) => (parseFloat(b.market_value_eur || "0") - parseFloat(a.market_value_eur || "0")))
+                        .map((player, index) => (
+                        <tr key={player.id} className="border-b hover:bg-muted/50">
+                          <td className="py-3 px-3 font-medium">{player.alias || `${player.first_name} ${player.last_name}`}</td>
+                          <td className="text-right py-3 px-3">
+                            {player.market_value_eur ? `€${(parseFloat(player.market_value_eur) / 1000000).toFixed(1)}M` : "N/A"}
+                          </td>
+                          <td className="text-right py-3 px-3">
+                            <Badge variant="outline" className="text-xs">
+                              #{index + 1}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
               </TabsContent>
 
-              {/* Forma */}
-              <TabsContent value="form" className="space-y-4">
-                <div className="h-80 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={selectedPlayers[0]?.form || []}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis label={{ value: "Valor (Millones $)", angle: -90, position: "insideLeft" }} />
-                      <Tooltip />
-                      <Legend />
-                      {selectedPlayers.map((player, idx) => (
-                        <Line
-                          key={player.id}
-                          type="monotone"
-                          dataKey="value"
-                          stroke={["#3b82f6", "#10b981", "#f59e0b"][idx]}
-                          name={player.name}
-                          connectNulls
-                        />
-                      ))}
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </TabsContent>
-
-              {/* Atributos */}
-              <TabsContent value="attributes" className="space-y-4">
-                <div className="h-96 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart data={selectedPlayers[0]?.attributes ? Object.entries(selectedPlayers[0].attributes).map(([key, value]) => ({ name: key.charAt(0).toUpperCase() + key.slice(1), value })) : []}>
-                      <PolarGrid />
-                      <PolarAngleAxis dataKey="name" />
-                      <PolarRadiusAxis angle={90} domain={[0, 100]} />
-                      <Radar name={selectedPlayers[0]?.name} dataKey="value" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
-                      {selectedPlayers.length > 1 && (
-                        <Radar name={selectedPlayers[1]?.name} dataKey="value" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
-                      )}
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </div>
-              </TabsContent>
-
               {/* Estadísticas */}
               <TabsContent value="stats">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {selectedPlayers.map((player) => (
                     <Card key={player.id}>
                       <CardHeader>
-                        <CardTitle className="text-lg">{player.name}</CardTitle>
+                        <CardTitle className="text-lg">{player.alias || `${player.first_name} ${player.last_name}`}</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
                           <div className="bg-blue-50 p-3 rounded">
-                            <p className="text-xs text-muted-foreground">Goles</p>
-                            <p className="text-2xl font-bold text-blue-600">{player.stats.goals}</p>
+                            <p className="text-xs text-muted-foreground">Posición</p>
+                            <p className="text-lg font-bold text-blue-600">{player.position || "N/A"}</p>
                           </div>
                           <div className="bg-green-50 p-3 rounded">
-                            <p className="text-xs text-muted-foreground">Asistencias</p>
-                            <p className="text-2xl font-bold text-green-600">{player.stats.assists}</p>
+                            <p className="text-xs text-muted-foreground">Edad</p>
+                            <p className="text-lg font-bold text-green-600">{player.age || "N/A"}</p>
                           </div>
                           <div className="bg-yellow-50 p-3 rounded">
-                            <p className="text-xs text-muted-foreground">Partidos</p>
-                            <p className="text-2xl font-bold text-yellow-600">{player.stats.matches}</p>
+                            <p className="text-xs text-muted-foreground">Altura</p>
+                            <p className="text-lg font-bold text-yellow-600">{player.height_cm ? `${player.height_cm}cm` : "N/A"}</p>
                           </div>
                           <div className="bg-purple-50 p-3 rounded">
-                            <p className="text-xs text-muted-foreground">Rating</p>
-                            <p className="text-2xl font-bold text-purple-600">{player.stats.rating}</p>
+                            <p className="text-xs text-muted-foreground">Peso</p>
+                            <p className="text-lg font-bold text-purple-600">{player.weight_kg ? `${player.weight_kg}kg` : "N/A"}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>Pierna preferida:</span>
+                            <span className="font-medium">{player.preferred_foot || "N/A"}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Nacionalidad:</span>
+                            <span className="font-medium">{player.nationality?.name || "N/A"}</span>
                           </div>
                         </div>
                       </CardContent>

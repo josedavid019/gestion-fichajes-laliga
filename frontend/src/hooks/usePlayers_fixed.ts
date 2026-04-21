@@ -82,8 +82,8 @@ export function usePlayers(params?: Record<string, string | number>) {
             allPlayers = [...allPlayers, ...batch];
             offset += limit;
 
-            // Safety check - allow up to 1000 players
-            if (allPlayers.length >= 1000) {
+            // Safety check
+            if (allPlayers.length >= 500) {
               hasMore = false;
             }
           }
