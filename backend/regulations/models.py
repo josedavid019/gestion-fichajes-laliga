@@ -3,37 +3,6 @@ from players.models import Player, Club
 from accounts.models import User
 
 
-class Contract(models.Model):
-    STATUS = [
-        ("active", "Activo"),
-        ("expired", "Expirado"),
-        ("terminated", "Rescindido"),
-        ("pending", "Pendiente"),
-    ]
-
-    player = models.ForeignKey(
-        Player, on_delete=models.CASCADE, related_name="contracts"
-    )
-    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name="contracts")
-
-    status = models.CharField(max_length=20, choices=STATUS, default="active")
-
-    date_start = models.DateField()
-    date_end = models.DateField()
-
-    annual_salary_eur = models.DecimalField(
-        max_digits=14, decimal_places=2, null=True, blank=True
-    )
-
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = "regulations_contract"
-
-    def __str__(self):
-        return f"Contrato {self.player} — {self.club}"
-
-
 class RegulationDocument(models.Model):
     DOC_TYPES = [
         ("fifa_regulation", "FIFA"),
@@ -42,7 +11,6 @@ class RegulationDocument(models.Model):
         ("law", "Ley"),
         ("other", "Otro"),
     ]
-
     title = models.CharField(max_length=255)
     doc_type = models.CharField(max_length=30, choices=DOC_TYPES)
     category = models.CharField(max_length=100, blank=True)
@@ -70,14 +38,15 @@ class RegulationChunk(models.Model):
         on_delete=models.CASCADE,
         related_name="chunks",
     )
-
     chunk_index = models.PositiveIntegerField()
     section_title = models.CharField(max_length=255, blank=True)
     article_number = models.CharField(max_length=50, blank=True)
     clause_type = models.CharField(max_length=100, blank=True)
+    page = models.IntegerField(null=True, blank=True)
     content = models.TextField()
     embedding = models.JSONField(null=True, blank=True)
     embedding_model = models.CharField(max_length=100, default="all-MiniLM-L6-v2")
+    is_useful = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -87,10 +56,11 @@ class RegulationChunk(models.Model):
             models.Index(fields=["document"]),
             models.Index(fields=["article_number"]),
             models.Index(fields=["clause_type"]),
+            models.Index(fields=["page"]),
         ]
 
     def __str__(self):
-        return f"{self.document} — Artículo {self.article_number}"
+        return f"{self.document.title} — {self.article_number or 'sin artículo'}"
 
 
 class LegalQuery(models.Model):
@@ -112,9 +82,8 @@ class LegalAnswer(models.Model):
         on_delete=models.CASCADE,
         related_name="answers",
     )
-
     answer_text = models.TextField()
-    model_used = models.CharField(max_length=100, default="gpt")
+    model_used = models.CharField(max_length=100, default="rag")
     confidence_score = models.FloatField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -131,32 +100,29 @@ class LegalSource(models.Model):
         on_delete=models.CASCADE,
         related_name="sources",
     )
-
-    # null=True en ambos FK porque cuando los PDFs no están indexados
-    # en BD (vienen solo de Colab), no hay documento ni chunk local
     document = models.ForeignKey(
         RegulationDocument,
         on_delete=models.CASCADE,
         null=True,
         blank=True,
     )
-
     chunk = models.ForeignKey(
         RegulationChunk,
         on_delete=models.CASCADE,
         null=True,
         blank=True,
     )
-
+    doc_name = models.CharField(max_length=255, blank=True)
+    page = models.IntegerField(null=True, blank=True)
     relevance_score = models.FloatField()
     source_text = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "regulations_legal_source"
-        # unique_together eliminado — falla cuando chunk=None con múltiples fuentes
 
     def __str__(self):
-        return f"Fuente {self.document} (score: {self.relevance_score})"
+        return f"{self.doc_name or self.document} (score: {self.relevance_score})"
 
 
 class EmbeddingCache(models.Model):
@@ -169,3 +135,29 @@ class EmbeddingCache(models.Model):
 
     def __str__(self):
         return f"EmbeddingCache {self.id}"
+
+
+class Contract(models.Model):
+    STATUS = [
+        ("active", "Activo"),
+        ("expired", "Expirado"),
+        ("terminated", "Rescindido"),
+        ("pending", "Pendiente"),
+    ]
+    player = models.ForeignKey(
+        Player, on_delete=models.CASCADE, related_name="contracts"
+    )
+    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name="contracts")
+    status = models.CharField(max_length=20, choices=STATUS, default="active")
+    date_start = models.DateField()
+    date_end = models.DateField()
+    annual_salary_eur = models.DecimalField(
+        max_digits=14, decimal_places=2, null=True, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "regulations_contract"
+
+    def __str__(self):
+        return f"Contrato {self.player} — {self.club}"
