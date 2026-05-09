@@ -133,7 +133,7 @@ class EmbeddingCache(models.Model):
     con el mismo texto. Útil para queries repetidas.
     """
 
-    text_hash = models.CharField(max_length=64, unique=True)
+    text_hash = models.CharField(max_length=64, unique=True, null=True, blank=True)
     text = models.TextField()
     embedding = VectorField(dimensions=EMBEDDING_DIM)
     created_at = models.DateTimeField(auto_now_add=True)
