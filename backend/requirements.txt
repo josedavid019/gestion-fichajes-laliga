@@ -18,3 +18,5 @@ ultralytics
 pytesseract
 psycopg2-binary
 pgvector
+xgboost
+shap

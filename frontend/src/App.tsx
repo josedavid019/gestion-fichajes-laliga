@@ -3,12 +3,16 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
 import Detection from "./pages/Detection";
 import AIQuery from "./pages/AIQuery";
 import Prediction from "./pages/Prediction";
 import Reports from "./pages/Reports";
 import Scouting from "./pages/Scouting";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -19,16 +23,68 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AppLayout>
+        <AuthProvider>
           <Routes>
-            <Route path="/" element={<Reports />} />
-            <Route path="/detection" element={<Detection />} />
-            <Route path="/ai-query" element={<AIQuery />} />
-            <Route path="/prediction" element={<Prediction />} />
-            <Route path="/scouting" element={<Scouting />} />
+            {/* Auth routes without layout */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+
+            {/* Protected routes with layout */}
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Reports />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/detection"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Detection />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ai-query"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <AIQuery />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/prediction"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Prediction />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/scouting"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Scouting />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </AppLayout>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
