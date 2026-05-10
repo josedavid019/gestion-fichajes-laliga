@@ -1,4 +1,4 @@
-import { Camera, Brain, FileBarChart, Zap, Users } from "lucide-react";
+import { Camera, Brain, FileBarChart, Zap, TrendingUp, Users } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -17,6 +17,7 @@ const modules = [
   { title: "Dashboard", url: "/", icon: FileBarChart },
   { title: "Detección YOLO", url: "/detection", icon: Camera },
   { title: "Consulta IA / RAG", url: "/ai-query", icon: Brain },
+  { title: "Predicciones", url: "/prediction", icon: TrendingUp },
   { title: "Gestión de Jugadores", url: "/scouting", icon: Users },
 ];
 

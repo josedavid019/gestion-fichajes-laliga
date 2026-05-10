@@ -1,5 +1,6 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { UserMenu } from "@/components/UserMenu";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -13,7 +14,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <div className="h-5 w-px bg-border/50" />
               <span className="text-xs text-muted-foreground font-body">Sistema de Scouting Inteligente</span>
             </div>
-            <div></div>
+            <UserMenu />
           </header>
           <main className="flex-1 p-6 overflow-auto">
             {children}

@@ -23,5 +23,6 @@ urlpatterns = [
     path("api/vision/", include("vision.urls")),
     path("api/rag/", include("regulations.urls")),
     path("api/auth/", include("accounts.urls")),
+    path("api/predictions/", include("predictions.urls")),
     path("api/", include("players.urls")),
 ]
