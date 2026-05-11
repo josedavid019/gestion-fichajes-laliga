@@ -1,6 +1,16 @@
-import { Camera, Brain, FileBarChart, Zap, TrendingUp, Users } from "lucide-react";
+import {
+  Camera,
+  Brain,
+  FileBarChart,
+  Zap,
+  TrendingUp,
+  Users,
+  Settings,
+  FileText,
+} from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Sidebar,
   SidebarContent,
@@ -25,6 +35,11 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { user } = useAuth();
+
+  // Check if user is admin
+  const isAdmin =
+    user?.email === "admin@example.com" || (user as any)?.is_staff === true;
 
   return (
     <Sidebar collapsible="icon">
@@ -66,6 +81,50 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {/* Admin Section */}
+              {isAdmin && (
+                <>
+                  <SidebarMenuItem key="admin-divider" className="my-2">
+                    <div className="border-t border-border/30" />
+                  </SidebarMenuItem>
+                  <SidebarMenuItem key="admin-label">
+                    {!collapsed && (
+                      <p className="text-xs font-semibold text-muted-foreground px-2 py-2 uppercase">
+                        Administración
+                      </p>
+                    )}
+                  </SidebarMenuItem>
+                  <SidebarMenuItem key="users-management">
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to="/admin/users"
+                        className="hover:bg-muted/50 transition-colors"
+                        activeClassName="bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                      >
+                        <Settings className="mr-2 h-4 w-4" />
+                        {!collapsed && (
+                          <span className="text-sm">Gestión de Usuarios</span>
+                        )}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem key="audit-logs">
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to="/admin/audit-logs"
+                        className="hover:bg-muted/50 transition-colors"
+                        activeClassName="bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        {!collapsed && (
+                          <span className="text-sm">Logs de Auditoría</span>
+                        )}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
