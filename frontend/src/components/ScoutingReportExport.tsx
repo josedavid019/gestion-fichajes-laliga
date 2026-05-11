@@ -1,15 +1,45 @@
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { FileDown, Plus, List, Grid, Eye, Settings, Download, Mail } from "lucide-react";
+import {
+  FileDown,
+  Plus,
+  List,
+  Grid,
+  Eye,
+  Settings,
+  Download,
+  Mail,
+} from "lucide-react";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 interface ScoutingReport {
   id: string;
@@ -76,20 +106,50 @@ const mockReports: ScoutingReport[] = [
 ];
 
 const reportSections = [
-  { id: "general", label: "Información General", description: "Datos personales y datos básicos del jugador" },
-  { id: "tecnico", label: "Análisis Técnico", description: "Habilidades técnicas y capacidades" },
-  { id: "fisico", label: "Análisis Físico", description: "Evaluación física y atributos" },
-  { id: "mental", label: "Aspecto Mental", description: "Personalidad, mentalidad y liderazgo" },
-  { id: "video", label: "Análisis Video", description: "Análisis de video del jugador" },
-  { id: "comparativa", label: "Análisis Comparativo", description: "Comparación con otros jugadores" },
-  { id: "financiero", label: "Análisis Financiero", description: "Valor de mercado y costos" },
-  { id: "riesgos", label: "Análisis de Riesgos", description: "Identificación de riesgos potenciales" },
+  {
+    id: "general",
+    label: "Información General",
+    description: "Datos personales y datos básicos del jugador",
+  },
+  {
+    id: "tecnico",
+    label: "Análisis Técnico",
+    description: "Habilidades técnicas y capacidades",
+  },
+  {
+    id: "fisico",
+    label: "Análisis Físico",
+    description: "Evaluación física y atributos",
+  },
+  {
+    id: "mental",
+    label: "Aspecto Mental",
+    description: "Personalidad, mentalidad y liderazgo",
+  },
+  {
+    id: "video",
+    label: "Análisis Video",
+    description: "Análisis de video del jugador",
+  },
+  {
+    id: "comparativa",
+    label: "Análisis Comparativo",
+    description: "Comparación con otros jugadores",
+  },
+  {
+    id: "financiero",
+    label: "Análisis Financiero",
+    description: "Valor de mercado y costos",
+  },
+  {
+    id: "riesgos",
+    label: "Análisis de Riesgos",
+    description: "Identificación de riesgos potenciales",
+  },
 ];
 
 const exportFormats = [
   { id: "pdf", label: "PDF", description: "Documento profesional en PDF" },
-  { id: "excel", label: "Excel", description: "Hoja de cálculo con datos", disabled: true },
-  { id: "html", label: "HTML", description: "Página web interactiva", disabled: true },
 ];
 
 const getStatusColor = (status: string) => {
@@ -121,15 +181,25 @@ const getStatusLabel = (status: string) => {
 export const ScoutingReportExport = () => {
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [selectedReports, setSelectedReports] = useState<string[]>([]);
-  const [filterStatus, setFilterStatus] = useState<"all" | "completed" | "draft" | "archived">("all");
-  const [selectedReport, setSelectedReport] = useState<ScoutingReport | null>(null);
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "completed" | "draft" | "archived"
+  >("all");
+  const [selectedReport, setSelectedReport] = useState<ScoutingReport | null>(
+    null,
+  );
   const [exportFormat, setExportFormat] = useState("pdf");
-  const [selectedSections, setSelectedSections] = useState<string[]>(reportSections.map((s) => s.id));
+  const [selectedSections, setSelectedSections] = useState<string[]>(
+    reportSections.map((s) => s.id),
+  );
 
-  const filteredReports = mockReports.filter((r) => filterStatus === "all" || r.status === filterStatus);
+  const filteredReports = mockReports.filter(
+    (r) => filterStatus === "all" || r.status === filterStatus,
+  );
 
   const toggleReportSelection = (id: string) => {
-    setSelectedReports((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+    setSelectedReports((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+    );
   };
 
   const toggleAllReports = () => {
@@ -141,7 +211,9 @@ export const ScoutingReportExport = () => {
   };
 
   const toggleSection = (id: string) => {
-    setSelectedSections((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
+    setSelectedSections((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
+    );
   };
 
   const toggleAllSections = () => {
@@ -149,6 +221,265 @@ export const ScoutingReportExport = () => {
       setSelectedSections([]);
     } else {
       setSelectedSections(reportSections.map((s) => s.id));
+    }
+  };
+
+  const handleExport = async () => {
+    if (selectedReports.length === 0) {
+      alert("Por favor selecciona al menos un reporte para exportar.");
+      return;
+    }
+
+    try {
+      const doc = new jsPDF();
+      const selectedReportData = mockReports.filter((report) =>
+        selectedReports.includes(report.id),
+      );
+
+      // Configuración de colores
+      const primaryColor = [0, 123, 255]; // Azul
+      const secondaryColor = [108, 117, 125]; // Gris
+      const accentColor = [255, 193, 7]; // Amarillo
+      const successColor = [40, 167, 69]; // Verde
+      const dangerColor = [220, 53, 69]; // Rojo
+
+      // Función auxiliar para dibujar líneas
+      const drawLine = (
+        x1: number,
+        y1: number,
+        x2: number,
+        y2: number,
+        color = [0, 0, 0],
+      ) => {
+        doc.setDrawColor(color[0], color[1], color[2]);
+        doc.line(x1, y1, x2, y2);
+      };
+
+      // Función auxiliar para dibujar rectángulos
+      const drawRect = (
+        x: number,
+        y: number,
+        w: number,
+        h: number,
+        color = [0, 0, 0],
+        fill = false,
+      ) => {
+        if (fill) {
+          doc.setFillColor(color[0], color[1], color[2]);
+          doc.rect(x, y, w, h, "F");
+        } else {
+          doc.setDrawColor(color[0], color[1], color[2]);
+          doc.rect(x, y, w, h);
+        }
+      };
+
+      // Header del documento
+      drawRect(0, 0, 210, 40, primaryColor, true);
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.setFont("helvetica", "bold");
+      doc.text("SCOUT AI", 20, 20);
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.text("Sistema de Scouting Inteligente", 20, 30);
+      doc.text("Reportes de Evaluación de Jugadores", 20, 35);
+
+      // Fecha y contador
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(10);
+      doc.text(
+        `Fecha de exportación: ${new Date().toLocaleDateString("es-ES")}`,
+        140,
+        20,
+      );
+      doc.text(`Reportes incluidos: ${selectedReportData.length}`, 140, 30);
+
+      let yPosition = 50;
+
+      selectedReportData.forEach((report, index) => {
+        if (yPosition > 220) {
+          // Nueva página si es necesario
+          doc.addPage();
+          yPosition = 30;
+        }
+
+        // Marco del reporte
+        drawRect(15, yPosition - 5, 180, 80, primaryColor);
+        drawRect(16, yPosition - 4, 178, 78, [255, 255, 255], true);
+
+        // Título del reporte con fondo
+        drawRect(16, yPosition - 4, 178, 12, primaryColor, true);
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${index + 1}. ${report.playerName}`, 25, yPosition + 3);
+
+        // Información básica
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        yPosition += 18;
+
+        // Primera fila: Posición, Club, Edad
+        doc.text("Posición:", 25, yPosition);
+        doc.setFont("helvetica", "normal");
+        doc.text(report.position, 50, yPosition);
+
+        doc.setFont("helvetica", "bold");
+        doc.text("Club:", 90, yPosition);
+        doc.setFont("helvetica", "normal");
+        doc.text(report.club, 105, yPosition);
+
+        doc.setFont("helvetica", "bold");
+        doc.text("Edad:", 150, yPosition);
+        doc.setFont("helvetica", "normal");
+        doc.text(`${report.age} años`, 165, yPosition);
+
+        yPosition += 8;
+
+        // Segunda fila: Calificación, Estado
+        doc.setFont("helvetica", "bold");
+        doc.text("Calificación:", 25, yPosition);
+        doc.setFont("helvetica", "normal");
+
+        // Calificación con color
+        const ratingColor =
+          report.rating >= 8.5
+            ? successColor
+            : report.rating >= 7.0
+              ? accentColor
+              : dangerColor;
+        doc.setTextColor(ratingColor[0], ratingColor[1], ratingColor[2]);
+        doc.text(`${report.rating}/10`, 50, yPosition);
+        doc.setTextColor(0, 0, 0);
+
+        doc.setFont("helvetica", "bold");
+        doc.text("Estado:", 90, yPosition);
+        doc.setFont("helvetica", "normal");
+
+        // Estado con color
+        const statusColor =
+          report.status === "completed"
+            ? successColor
+            : report.status === "draft"
+              ? accentColor
+              : secondaryColor;
+        doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+        doc.text(getStatusLabel(report.status), 105, yPosition);
+        doc.setTextColor(0, 0, 0);
+
+        yPosition += 8;
+
+        // Fechas
+        doc.setFontSize(9);
+        doc.setTextColor(
+          secondaryColor[0],
+          secondaryColor[1],
+          secondaryColor[2],
+        );
+        doc.text(
+          `Creado: ${report.createdDate} | Modificado: ${report.lastModified}`,
+          25,
+          yPosition,
+        );
+
+        yPosition += 12;
+
+        // Secciones incluidas
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text("Secciones del Reporte:", 25, yPosition);
+        yPosition += 6;
+
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        const includedSections = report.sections.filter((section) =>
+          selectedSections.includes(section.toLowerCase().replace(/\s+/g, "")),
+        );
+
+        if (includedSections.length > 0) {
+          let sectionText = includedSections.join(" • ");
+          // Dividir en líneas si es muy largo
+          if (sectionText.length > 80) {
+            const words = sectionText.split(" • ");
+            let line = "";
+            let lineY = yPosition;
+
+            words.forEach((word, idx) => {
+              if ((line + " • " + word).length > 60) {
+                doc.text(line, 35, lineY);
+                line = word;
+                lineY += 5;
+              } else {
+                line += (line ? " • " : "") + word;
+              }
+            });
+            if (line) doc.text(line, 35, lineY);
+            yPosition = lineY + 8;
+          } else {
+            doc.text(sectionText, 35, yPosition);
+            yPosition += 8;
+          }
+        } else {
+          doc.setTextColor(
+            secondaryColor[0],
+            secondaryColor[1],
+            secondaryColor[2],
+          );
+          doc.text("Ninguna sección seleccionada", 35, yPosition);
+          yPosition += 8;
+        }
+
+        yPosition += 15; // Espacio entre reportes
+      });
+
+      // Pie de página mejorado
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+
+        // Línea separadora
+        drawLine(15, 275, 195, 275, primaryColor);
+
+        // Información del pie
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(
+          secondaryColor[0],
+          secondaryColor[1],
+          secondaryColor[2],
+        );
+        doc.text(`Página ${i} de ${pageCount}`, 15, 285);
+
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.text("ScoutAI - Sistema de Scouting Inteligente", 195, 285, {
+          align: "right",
+        });
+
+        doc.setFontSize(6);
+        doc.setTextColor(
+          secondaryColor[0],
+          secondaryColor[1],
+          secondaryColor[2],
+        );
+        doc.text(
+          "Generado automáticamente el " + new Date().toLocaleString("es-ES"),
+          195,
+          290,
+          { align: "right" },
+        );
+      }
+
+      // Descargar el PDF
+      const fileName = `reportes_scouting_${new Date().toISOString().split("T")[0]}.pdf`;
+      doc.save(fileName);
+
+      alert(`PDF generado exitosamente: ${fileName}`);
+    } catch (error) {
+      console.error("Error al generar el PDF:", error);
+      alert("Error al generar el PDF. Por favor intenta de nuevo.");
     }
   };
 
@@ -160,7 +491,10 @@ export const ScoutingReportExport = () => {
             <FileDown className="w-5 h-5" />
             Reportes de Scouting
           </CardTitle>
-          <CardDescription>Crea, gestiona y exporta reportes detallados de evaluación de jugadores</CardDescription>
+          <CardDescription>
+            Crea, gestiona y exporta reportes detallados de evaluación de
+            jugadores
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Acciones Superiores */}
@@ -185,7 +519,8 @@ export const ScoutingReportExport = () => {
                   <DialogHeader>
                     <DialogTitle>Exportar Reportes de Scouting</DialogTitle>
                     <DialogDescription>
-                      Configura las opciones de exportación para {selectedReports.length} reporte(s)
+                      Configura las opciones de exportación para{" "}
+                      {selectedReports.length} reporte(s)
                     </DialogDescription>
                   </DialogHeader>
 
@@ -198,17 +533,19 @@ export const ScoutingReportExport = () => {
 
                     {/* Selección de Formato */}
                     <TabsContent value="format" className="space-y-4">
-                      <Label className="text-base font-semibold">Selecciona el formato de exportación</Label>
+                      <Label className="text-base font-semibold">
+                        Selecciona el formato de exportación
+                      </Label>
                       <div className="grid grid-cols-1 gap-3">
                         {exportFormats.map((format) => (
                           <div
                             key={format.id}
                             className={`p-3 border rounded-lg cursor-pointer transition-all ${
-                              exportFormat === format.id && !format.disabled
+                              exportFormat === format.id
                                 ? "border-blue-500 bg-blue-50"
                                 : "border-gray-200 hover:border-gray-300"
-                            } ${format.disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-                            onClick={() => !format.disabled && setExportFormat(format.id)}
+                            }`}
+                            onClick={() => setExportFormat(format.id)}
                           >
                             <input
                               type="radio"
@@ -216,34 +553,48 @@ export const ScoutingReportExport = () => {
                               value={format.id}
                               checked={exportFormat === format.id}
                               onChange={() => setExportFormat(format.id)}
-                              disabled={format.disabled}
                               className="mr-3"
                             />
-                            <label className="font-medium cursor-pointer">{format.label}</label>
-                            <p className="text-xs text-muted-foreground mt-1">{format.description}</p>
+                            <label className="font-medium cursor-pointer">
+                              {format.label}
+                            </label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {format.description}
+                            </p>
                           </div>
                         ))}
                       </div>
 
                       {/* Opciones Adicionales */}
                       <div className="space-y-3 mt-4 p-3 bg-muted rounded-lg">
-                        <Label className="text-sm font-semibold">Opciones de PDF</Label>
+                        <Label className="text-sm font-semibold">
+                          Opciones de PDF
+                        </Label>
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
                             <Checkbox id="color" defaultChecked />
-                            <Label htmlFor="color" className="text-sm cursor-pointer">
+                            <Label
+                              htmlFor="color"
+                              className="text-sm cursor-pointer"
+                            >
                               Incluir gráficos en color
                             </Label>
                           </div>
                           <div className="flex items-center gap-2">
                             <Checkbox id="logo" defaultChecked />
-                            <Label htmlFor="logo" className="text-sm cursor-pointer">
+                            <Label
+                              htmlFor="logo"
+                              className="text-sm cursor-pointer"
+                            >
                               Incluir logo del club
                             </Label>
                           </div>
                           <div className="flex items-center gap-2">
                             <Checkbox id="confidencial" />
-                            <Label htmlFor="confidencial" className="text-sm cursor-pointer">
+                            <Label
+                              htmlFor="confidencial"
+                              className="text-sm cursor-pointer"
+                            >
                               Marcar como confidencial
                             </Label>
                           </div>
@@ -254,13 +605,17 @@ export const ScoutingReportExport = () => {
                     {/* Selección de Secciones */}
                     <TabsContent value="sections" className="space-y-4">
                       <div className="flex items-center justify-between mb-3">
-                        <Label className="text-base font-semibold">Incluir Secciones</Label>
+                        <Label className="text-base font-semibold">
+                          Incluir Secciones
+                        </Label>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={toggleAllSections}
                         >
-                          {selectedSections.length === reportSections.length ? "Deseleccionar Todo" : "Seleccionar Todo"}
+                          {selectedSections.length === reportSections.length
+                            ? "Deseleccionar Todo"
+                            : "Seleccionar Todo"}
                         </Button>
                       </div>
                       <div className="space-y-3">
@@ -275,38 +630,55 @@ export const ScoutingReportExport = () => {
                               onCheckedChange={() => toggleSection(section.id)}
                               className="mt-1"
                             />
-                            <label htmlFor={section.id} className="flex-1 cursor-pointer">
+                            <label
+                              htmlFor={section.id}
+                              className="flex-1 cursor-pointer"
+                            >
                               <p className="font-medium">{section.label}</p>
-                              <p className="text-xs text-muted-foreground">{section.description}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {section.description}
+                              </p>
                             </label>
                           </div>
                         ))}
                       </div>
                       <p className="text-xs text-muted-foreground mt-4">
-                        {selectedSections.length} de {reportSections.length} secciones seleccionadas
+                        {selectedSections.length} de {reportSections.length}{" "}
+                        secciones seleccionadas
                       </p>
                     </TabsContent>
 
                     {/* Vista Previa */}
                     <TabsContent value="preview" className="space-y-4">
                       <div className="bg-muted p-4 rounded-lg space-y-3">
-                        <h3 className="font-semibold">Vista Previa de Exportación</h3>
+                        <h3 className="font-semibold">
+                          Vista Previa de Exportación
+                        </h3>
                         <div className="space-y-2 text-sm">
                           <p>
-                            <strong>Reportes a exportar:</strong> {selectedReports.length}
+                            <strong>Reportes a exportar:</strong>{" "}
+                            {selectedReports.length}
                           </p>
                           <p>
-                            <strong>Formato:</strong> {exportFormats.find((f) => f.id === exportFormat)?.label}
+                            <strong>Formato:</strong>{" "}
+                            {
+                              exportFormats.find((f) => f.id === exportFormat)
+                                ?.label
+                            }
                           </p>
                           <p>
-                            <strong>Secciones:</strong> {selectedSections.length}
+                            <strong>Secciones:</strong>{" "}
+                            {selectedSections.length}
                           </p>
                         </div>
                       </div>
 
                       <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
                         <p className="text-xs text-blue-900">
-                          El archivo PDF incluirá todos los reportes seleccionados con las secciones elegidas. Se generará un documento combinado o individual según tu preferencia.
+                          El archivo PDF incluirá todos los reportes
+                          seleccionados con las secciones elegidas. Se generará
+                          un documento combinado o individual según tu
+                          preferencia.
                         </p>
                       </div>
                     </TabsContent>
@@ -314,7 +686,7 @@ export const ScoutingReportExport = () => {
 
                   <div className="flex gap-2 justify-end mt-6">
                     <Button variant="outline">Cancelar</Button>
-                    <Button>
+                    <Button onClick={handleExport} data-export-button>
                       <Download className="w-4 h-4 mr-2" />
                       Exportar {selectedReports.length} Reporte(s)
                     </Button>
@@ -339,7 +711,10 @@ export const ScoutingReportExport = () => {
               >
                 <Grid className="w-4 h-4" />
               </Button>
-              <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
+              <Select
+                value={filterStatus}
+                onValueChange={(value: any) => setFilterStatus(value)}
+              >
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Estado" />
                 </SelectTrigger>
@@ -358,7 +733,8 @@ export const ScoutingReportExport = () => {
             <Card className="bg-blue-50 border-blue-200">
               <CardContent className="pt-4">
                 <p className="text-sm">
-                  <strong>{selectedReports.length}</strong> reporte(s) seleccionado(s) para exportación
+                  <strong>{selectedReports.length}</strong> reporte(s)
+                  seleccionado(s) para exportación
                 </p>
               </CardContent>
             </Card>
@@ -369,7 +745,10 @@ export const ScoutingReportExport = () => {
             <div className="space-y-2">
               <div className="flex items-center gap-3 p-3 border-b border-t font-medium text-sm">
                 <Checkbox
-                  checked={selectedReports.length === filteredReports.length && filteredReports.length > 0}
+                  checked={
+                    selectedReports.length === filteredReports.length &&
+                    filteredReports.length > 0
+                  }
                   onCheckedChange={toggleAllReports}
                 />
                 <span className="flex-1">Jugador</span>
@@ -379,7 +758,10 @@ export const ScoutingReportExport = () => {
                 <span className="w-20">Acciones</span>
               </div>
               {filteredReports.map((report) => (
-                <div key={report.id} className="flex items-center gap-3 p-3 border rounded hover:bg-muted/50">
+                <div
+                  key={report.id}
+                  className="flex items-center gap-3 p-3 border rounded hover:bg-muted/50"
+                >
                   <Checkbox
                     checked={selectedReports.includes(report.id)}
                     onCheckedChange={() => toggleReportSelection(report.id)}
@@ -396,7 +778,9 @@ export const ScoutingReportExport = () => {
                     </Badge>
                   </div>
                   <div className="w-20 text-center">
-                    <span className="font-bold text-amber-600">{report.rating}</span>
+                    <span className="font-bold text-amber-600">
+                      {report.rating}
+                    </span>
                   </div>
                   <div className="w-32 text-sm">{report.lastModified}</div>
                   <div className="w-20 flex gap-1">
@@ -420,11 +804,16 @@ export const ScoutingReportExport = () => {
           {viewMode === "grid" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredReports.map((report) => (
-                <Card key={report.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+                <Card
+                  key={report.id}
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                >
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <CardTitle className="text-base">{report.playerName}</CardTitle>
+                        <CardTitle className="text-base">
+                          {report.playerName}
+                        </CardTitle>
                         <CardDescription className="text-xs">
                           {report.position} • {report.club}
                         </CardDescription>
@@ -440,17 +829,25 @@ export const ScoutingReportExport = () => {
                       <Badge variant={getStatusColor(report.status)}>
                         {getStatusLabel(report.status)}
                       </Badge>
-                      <span className="font-bold text-amber-600">{report.rating}</span>
+                      <span className="font-bold text-amber-600">
+                        {report.rating}
+                      </span>
                     </div>
                     <div className="text-xs text-muted-foreground">
                       <p>Creado: {report.createdDate}</p>
                       <p>Modificado: {report.lastModified}</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs font-medium">Secciones incluidas:</p>
+                      <p className="text-xs font-medium">
+                        Secciones incluidas:
+                      </p>
                       <div className="flex flex-wrap gap-1">
                         {report.sections.map((section) => (
-                          <Badge key={section} variant="secondary" className="text-xs">
+                          <Badge
+                            key={section}
+                            variant="secondary"
+                            className="text-xs"
+                          >
                             {section}
                           </Badge>
                         ))}
@@ -461,7 +858,20 @@ export const ScoutingReportExport = () => {
                         <Eye className="w-3 h-3 mr-1" />
                         Ver
                       </Button>
-                      <Button size="sm" className="flex-1">
+                      <Button
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => {
+                          setSelectedReports([report.id]);
+                          // Simular clic en el botón de exportar del diálogo
+                          setTimeout(() => {
+                            const exportButton = document.querySelector(
+                              "[data-export-button]",
+                            ) as HTMLButtonElement;
+                            if (exportButton) exportButton.click();
+                          }, 100);
+                        }}
+                      >
                         <Download className="w-3 h-3 mr-1" />
                         Exportar
                       </Button>
@@ -484,7 +894,9 @@ export const ScoutingReportExport = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Crear Nuevo Reporte</CardTitle>
-          <CardDescription>Plantilla para documentar evaluación de jugadores</CardDescription>
+          <CardDescription>
+            Plantilla para documentar evaluación de jugadores
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -515,7 +927,13 @@ export const ScoutingReportExport = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="age">Edad</Label>
-              <Input id="age" type="number" placeholder="Edad del jugador" min="16" max="40" />
+              <Input
+                id="age"
+                type="number"
+                placeholder="Edad del jugador"
+                min="16"
+                max="40"
+              />
             </div>
           </div>
 

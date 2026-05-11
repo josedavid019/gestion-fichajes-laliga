@@ -20,3 +20,6 @@ psycopg2-binary
 pgvector
 xgboost
 shap
+jspdf 
+html2canvas
+django-pgvector
