@@ -28,10 +28,12 @@ tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-+0$4ic6=(z#5wafkm0leq2n3_#7*c8lsn8je1j+#h43g=xi*%y"
+SECRET_KEY = os.getenv(
+    "SECRET_KEY", "django-insecure-+0$4ic6=(z#5wafkm0leq2n3_#7*c8lsn8je1j+#h43g=xi*%y"
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = ["*"]
 
@@ -185,6 +187,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
