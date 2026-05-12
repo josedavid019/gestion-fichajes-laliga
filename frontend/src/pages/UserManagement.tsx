@@ -1,5 +1,9 @@
 import React, { useState } from "react";
-import { useAdminUsers, AdminUser } from "@/hooks/useAdminUsers";
+import {
+  useAdminUsers,
+  AdminUser,
+  CreateUserData,
+} from "@/hooks/useAdminUsers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,16 +25,7 @@ import { toast } from "sonner";
 import { Trash2, Edit2, Plus, Search, Shield, User } from "lucide-react";
 import UserForm from "@/components/UserForm";
 
-interface FormData {
-  email: string;
-  username: string;
-  first_name: string;
-  last_name: string;
-  is_active: boolean;
-  is_staff: boolean;
-  is_superuser: boolean;
-  role: "admin" | "director" | "scout";
-}
+interface FormData extends CreateUserData {}
 
 const ROLE_COLORS: Record<string, string> = {
   admin: "bg-red-100 text-red-800",
@@ -58,10 +53,14 @@ const UserManagement: React.FC = () => {
     username: "",
     first_name: "",
     last_name: "",
+    password: "",
     is_active: true,
     is_staff: false,
     is_superuser: false,
     role: "scout",
+    phone: "",
+    bio: "",
+    avatar: null,
   });
 
   const filteredUsers = users.filter((user) => {
@@ -98,10 +97,14 @@ const UserManagement: React.FC = () => {
         username: user.username,
         first_name: user.first_name,
         last_name: user.last_name,
+        password: "", // No mostrar contraseña existente por seguridad
         is_active: user.is_active,
         is_staff: user.is_staff,
         is_superuser: user.is_superuser,
-        role: user.role,
+        role: user.role || "scout",
+        phone: user.phone || "",
+        bio: user.bio || "",
+        avatar: null, // Can't pre-fill file input
       });
     } else {
       setEditingUser(null);
@@ -110,10 +113,14 @@ const UserManagement: React.FC = () => {
         username: "",
         first_name: "",
         last_name: "",
+        password: "",
         is_active: true,
         is_staff: false,
         is_superuser: false,
         role: "scout",
+        phone: "",
+        bio: "",
+        avatar: null,
       });
     }
     setIsDialogOpen(true);
@@ -127,15 +134,19 @@ const UserManagement: React.FC = () => {
       username: "",
       first_name: "",
       last_name: "",
+      password: "",
       is_active: true,
       is_staff: false,
       is_superuser: false,
       role: "scout",
+      phone: "",
+      bio: "",
+      avatar: null,
     });
   };
 
   const handleSubmit = (data: FormData) => {
-    if (!data.email || !data.first_name || !data.last_name || !data.username) {
+    if (!data.email || !data.username || !data.first_name || !data.last_name) {
       toast.error("Por favor completa todos los campos requeridos");
       return;
     }
@@ -157,15 +168,8 @@ const UserManagement: React.FC = () => {
     }
 
     try {
-      // Auto-set is_staff and is_superuser based on role
+      // Don't auto-set is_staff and is_superuser - let user control them
       let userData = { ...data };
-      if (data.role === "admin") {
-        userData.is_staff = true;
-        userData.is_superuser = true;
-      } else {
-        userData.is_staff = false;
-        userData.is_superuser = false;
-      }
 
       if (editingUser) {
         // Check if email is already in use by another user
@@ -208,13 +212,6 @@ const UserManagement: React.FC = () => {
   };
 
   const handleDelete = (userId: number) => {
-    // Prevent deleting the only admin (first user)
-    const user = users.find((u) => u.id === userId);
-    if (user?.email === "admin@example.com") {
-      toast.error("No puedes eliminar el usuario administrador principal");
-      return;
-    }
-
     if (window.confirm("¿Estás seguro de que deseas eliminar este usuario?")) {
       deleteUser(userId);
       toast.success("Usuario eliminado correctamente");
@@ -384,88 +381,91 @@ const UserManagement: React.FC = () => {
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
               {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="group bg-white hover:bg-slate-50 transition-colors"
-                  >
-                    <td className="px-6 py-4 text-sm text-slate-900 whitespace-nowrap">
-                      {user.email}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-700 font-mono whitespace-nowrap">
-                      @{user.username}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-900 whitespace-nowrap">
-                      {user.first_name} {user.last_name}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                          ROLE_COLORS[user.role]
-                        }`}
-                      >
-                        {user.role === "admin" && (
-                          <Shield className="w-3 h-3 mr-1" />
-                        )}
-                        {ROLE_LABELS[user.role]}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                          user.is_staff
-                            ? "bg-amber-100 text-amber-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {user.is_staff ? "Sí" : "No"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                          user.is_superuser
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {user.is_superuser ? "Sí" : "No"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-700">
-                      {formatDate(user.date_joined)}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                          user.is_active
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {user.is_active ? "Activo" : "Inactivo"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm space-x-2">
-                      <Button
-                        onClick={() => handleOpenDialog(user)}
-                        size="sm"
-                        variant="outline"
-                        className="text-blue-600 hover:text-blue-700"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        onClick={() => handleDelete(user.id)}
-                        size="sm"
-                        variant="outline"
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))
+                filteredUsers.map((user) => {
+                  const roleKey = user.role || "scout";
+                  return (
+                    <tr
+                      key={user.id}
+                      className="group bg-white hover:bg-slate-50 transition-colors"
+                    >
+                      <td className="px-6 py-4 text-sm text-slate-900 whitespace-nowrap">
+                        {user.email}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-700 font-mono whitespace-nowrap">
+                        @{user.username}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-900 whitespace-nowrap">
+                        {user.first_name} {user.last_name}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                            ROLE_COLORS[roleKey] || "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {roleKey === "admin" && (
+                            <Shield className="w-3 h-3 mr-1" />
+                          )}
+                          {ROLE_LABELS[roleKey] || "Sin rol"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                            user.is_staff
+                              ? "bg-amber-100 text-amber-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {user.is_staff ? "Sí" : "No"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                            user.is_superuser
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {user.is_superuser ? "Sí" : "No"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-700">
+                        {formatDate(user.created_at)}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                            user.is_active
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {user.is_active ? "Activo" : "Inactivo"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm space-x-2">
+                        <Button
+                          onClick={() => handleOpenDialog(user)}
+                          size="sm"
+                          variant="outline"
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => handleDelete(user.id)}
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={9} className="px-6 py-8 text-center">

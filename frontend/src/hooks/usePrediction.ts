@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
 export interface PredictionResponse {
   player: {
@@ -68,7 +69,7 @@ export function usePrediction(playerId?: number) {
 
       try {
         const url = `/api/predictions/player/?player_id=${playerId}`;
-        const response = await fetch(url);
+        const response = await fetchWithAuth(url);
         if (!response.ok) {
           console.error("API Error:", response.status, response.statusText);
           throw new Error(`Failed to fetch prediction: ${response.statusText}`);
@@ -94,7 +95,7 @@ export function useModels() {
     queryFn: async () => {
       try {
         const url = "/api/predictions/models/";
-        const response = await fetch(url);
+        const response = await fetchWithAuth(url);
         if (!response.ok) {
           throw new Error(`Failed to fetch models: ${response.statusText}`);
         }
@@ -118,9 +119,11 @@ export function useTopPerformers(limit = 10) {
     queryFn: async () => {
       try {
         const url = `/api/predictions/top_performers/?limit=${limit}`;
-        const response = await fetch(url);
+        const response = await fetchWithAuth(url);
         if (!response.ok) {
-          throw new Error(`Failed to fetch top performers: ${response.statusText}`);
+          throw new Error(
+            `Failed to fetch top performers: ${response.statusText}`,
+          );
         }
 
         const data = await response.json();

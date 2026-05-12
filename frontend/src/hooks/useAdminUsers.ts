@@ -1,4 +1,7 @@
 import { useCallback, useState, useEffect } from "react";
+import { authService } from "@/lib/authService";
+
+const API_URL = "http://127.0.0.1:8000/api";
 
 export interface AdminUser {
   id: number;
@@ -9,123 +12,212 @@ export interface AdminUser {
   is_active: boolean;
   is_staff: boolean;
   is_superuser: boolean;
-  role: "admin" | "director" | "scout";
-  date_joined: string;
+  role: "admin" | "director" | "scout" | null;
+  phone: string;
+  bio: string;
+  avatar: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
-const STORAGE_KEY = "admin_users_mock";
-
-// Initial mock users for admin management
-const INITIAL_USERS: AdminUser[] = [
-  {
-    id: 1,
-    email: "admin@example.com",
-    username: "admin",
-    first_name: "Admin",
-    last_name: "User",
-    is_active: true,
-    is_staff: true,
-    is_superuser: true,
-    role: "admin",
-    date_joined: "2026-01-01T00:00:00Z",
-  },
-  {
-    id: 2,
-    email: "scout@example.com",
-    username: "scout",
-    first_name: "Scout",
-    last_name: "Pro",
-    is_active: true,
-    is_staff: false,
-    is_superuser: false,
-    role: "scout",
-    date_joined: "2026-01-02T00:00:00Z",
-  },
-  {
-    id: 3,
-    email: "director@example.com",
-    username: "director",
-    first_name: "Director",
-    last_name: "General",
-    is_active: true,
-    is_staff: false,
-    is_superuser: false,
-    role: "director",
-    date_joined: "2026-01-03T00:00:00Z",
-  },
-  {
-    id: 4,
-    email: "juan.perez@example.com",
-    username: "juanperez",
-    first_name: "Juan",
-    last_name: "Pérez",
-    is_active: true,
-    is_staff: false,
-    is_superuser: false,
-    role: "scout",
-    date_joined: "2026-01-04T00:00:00Z",
-  },
-];
+export interface CreateUserData extends Omit<
+  AdminUser,
+  "id" | "created_at" | "updated_at" | "avatar"
+> {
+  avatar?: File | null;
+  password?: string;
+}
 
 export const useAdminUsers = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Load users from localStorage or initialize with default
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        setUsers(JSON.parse(stored));
-      } catch {
-        setUsers(INITIAL_USERS);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_USERS));
+  // Fetch users from backend
+  const fetchUsers = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_URL}/auth/users/`, {
+        method: "GET",
+        headers: authService.getAuthHeaders(),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch users: ${response.status}`);
       }
-    } else {
-      setUsers(INITIAL_USERS);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_USERS));
+
+      const data = await response.json();
+      setUsers(data);
+    } catch (err: any) {
+      console.error("Error fetching users:", err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
-  // Save users to localStorage
-  const saveUsers = useCallback((updatedUsers: AdminUser[]) => {
-    setUsers(updatedUsers);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUsers));
-  }, []);
+  // Load users on mount
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   // Create user
   const createUser = useCallback(
-    (userData: Omit<AdminUser, "id" | "date_joined">) => {
-      const newUser: AdminUser = {
-        ...userData,
-        id: Math.max(...users.map((u) => u.id), 0) + 1,
-        date_joined: new Date().toISOString(),
-      };
-      saveUsers([...users, newUser]);
-      return newUser;
+    async (userData: CreateUserData) => {
+      try {
+        const formData = new FormData();
+
+        // Add basic user data
+        formData.append("email", userData.email);
+        formData.append("username", userData.username);
+        formData.append("first_name", userData.first_name);
+        formData.append("last_name", userData.last_name);
+        formData.append("is_active", userData.is_active.toString());
+        formData.append("is_staff", userData.is_staff.toString());
+        formData.append("is_superuser", userData.is_superuser.toString());
+
+        // Add password - use provided password or default
+        const password = userData.password || "TempPassword123!";
+        formData.append("password", password);
+
+        // Add role if provided
+        if (userData.role) {
+          formData.append("role", userData.role);
+        }
+
+        // Add profile data
+        if (userData.phone) {
+          formData.append("phone", userData.phone);
+        }
+        if (userData.bio) {
+          formData.append("bio", userData.bio);
+        }
+        if (userData.avatar) {
+          formData.append("avatar", userData.avatar);
+        }
+
+        const response = await fetch(`${API_URL}/auth/users/`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${authService.getAccessToken()}`,
+          },
+          credentials: "include",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(JSON.stringify(errorData));
+        }
+
+        const newUser = await response.json();
+        await fetchUsers();
+        return newUser.user || newUser;
+      } catch (err: any) {
+        console.error("Error creating user:", err);
+        throw err;
+      }
     },
-    [users, saveUsers],
+    [users],
   );
 
   // Update user
   const updateUser = useCallback(
-    (id: number, userData: Partial<AdminUser>) => {
-      const updatedUsers = users.map((user) =>
-        user.id === id ? { ...user, ...userData } : user,
-      );
-      saveUsers(updatedUsers);
+    async (
+      id: number,
+      userData: Partial<Omit<AdminUser, "avatar">> & {
+        password?: string;
+        avatar?: File | null;
+      },
+    ) => {
+      try {
+        const formData = new FormData();
+
+        // Add basic user data
+        if (userData.email !== undefined)
+          formData.append("email", userData.email);
+        if (userData.username !== undefined)
+          formData.append("username", userData.username);
+        if (userData.first_name !== undefined)
+          formData.append("first_name", userData.first_name);
+        if (userData.last_name !== undefined)
+          formData.append("last_name", userData.last_name);
+        if (userData.is_active !== undefined)
+          formData.append("is_active", userData.is_active.toString());
+        if (userData.is_staff !== undefined)
+          formData.append("is_staff", userData.is_staff.toString());
+        if (userData.is_superuser !== undefined)
+          formData.append("is_superuser", userData.is_superuser.toString());
+
+        // Add password if provided
+        if (userData.password) {
+          formData.append("password", userData.password);
+        }
+
+        // Add role if provided
+        if (userData.role) {
+          formData.append("role", userData.role);
+        }
+
+        // Add profile data
+        if (userData.phone !== undefined) {
+          formData.append("phone", userData.phone);
+        }
+        if (userData.bio !== undefined) {
+          formData.append("bio", userData.bio);
+        }
+        if (userData.avatar) {
+          formData.append("avatar", userData.avatar);
+        }
+
+        const response = await fetch(`${API_URL}/auth/users/${id}/`, {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${authService.getAccessToken()}`,
+          },
+          credentials: "include",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(JSON.stringify(errorData));
+        }
+
+        const updatedUser = await response.json();
+        await fetchUsers();
+        return updatedUser;
+      } catch (err: any) {
+        console.error("Error updating user:", err);
+        throw err;
+      }
     },
-    [users, saveUsers],
+    [users],
   );
 
   // Delete user
   const deleteUser = useCallback(
-    (id: number) => {
-      const updatedUsers = users.filter((user) => user.id !== id);
-      saveUsers(updatedUsers);
+    async (id: number) => {
+      try {
+        const response = await fetch(`${API_URL}/auth/users/${id}/`, {
+          method: "DELETE",
+          headers: authService.getAuthHeaders(),
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to delete user: ${response.status}`);
+        }
+
+        setUsers(users.filter((user) => user.id !== id));
+      } catch (err: any) {
+        console.error("Error deleting user:", err);
+        throw err;
+      }
     },
-    [users, saveUsers],
+    [users],
   );
 
   // Get user by id
@@ -139,9 +231,11 @@ export const useAdminUsers = () => {
   return {
     users,
     isLoading,
+    error,
     createUser,
     updateUser,
     deleteUser,
     getUserById,
+    refetch: fetchUsers,
   };
 };

@@ -3,37 +3,50 @@ from .models import (
     LegalQuery,
     LegalAnswer,
     LegalSource,
-    RegulationDocument,
-    RegulationChunk,
 )
-
 
 # ── fuentes ────────────────────────────────────────────────────────────────────
 
 
 class LegalSourceSerializer(serializers.ModelSerializer):
-    doc_name = serializers.CharField(source="document.title", read_only=True)
-    doc_type = serializers.CharField(source="document.doc_type", read_only=True)
-    chunk_text = serializers.CharField(source="chunk.content", read_only=True)
-    page = serializers.IntegerField(source="chunk.chunk_index", read_only=True)
+    # LegalSource ya tiene doc_name y page como campos directos en el modelo,
+    # así que los leemos de ahí. Si además hay FK a document/chunk, usamos
+    # SerializerMethodField para no explotar cuando son None.
+    doc_type = serializers.SerializerMethodField()
+    chunk_text = serializers.SerializerMethodField()
 
     class Meta:
         model = LegalSource
         fields = [
             "id",
-            "doc_name",
+            "doc_name",  # CharField directo en el modelo
             "doc_type",
-            "page",
+            "page",  # IntegerField directo en el modelo
             "relevance_score",
             "chunk_text",
             "source_text",
         ]
+
+    def get_doc_type(self, obj):
+        # document puede ser None (SET_NULL)
+        if obj.document:
+            return obj.document.doc_type
+        return None
+
+    def get_chunk_text(self, obj):
+        # chunk puede ser None (SET_NULL)
+        if obj.chunk:
+            return obj.chunk.content
+        return obj.source_text or None
 
 
 # ── respuesta ──────────────────────────────────────────────────────────────────
 
 
 class LegalAnswerSerializer(serializers.ModelSerializer):
+    # LegalAnswer tiene OneToOneField desde LegalQuery, por lo que el
+    # related_name es "answer" (singular), no "answers".
+    # La relación inversa sources sí es ForeignKey → many.
     sources = LegalSourceSerializer(many=True, read_only=True)
 
     class Meta:
@@ -43,6 +56,7 @@ class LegalAnswerSerializer(serializers.ModelSerializer):
             "answer_text",
             "model_used",
             "confidence_score",
+            "chunks_used",
             "created_at",
             "sources",
         ]
@@ -52,22 +66,35 @@ class LegalAnswerSerializer(serializers.ModelSerializer):
 
 
 class LegalQueryListSerializer(serializers.ModelSerializer):
-    answers_count = serializers.IntegerField(source="answers.count", read_only=True)
+    # LegalQuery → LegalAnswer es OneToOne, no hay "answers" en plural.
+    # Usamos SerializerMethodField para no romper cuando answer no existe.
+    has_answer = serializers.SerializerMethodField()
+    answer_preview = serializers.SerializerMethodField()
 
     class Meta:
         model = LegalQuery
-        fields = ["id", "question", "created_at", "answers_count"]
+        fields = ["id", "question", "created_at", "has_answer", "answer_preview"]
+
+    def get_has_answer(self, obj):
+        return hasattr(obj, "answer")
+
+    def get_answer_preview(self, obj):
+        if hasattr(obj, "answer"):
+            return obj.answer.answer_text[:150]
+        return None
 
 
 # ── consulta (detail) ─────────────────────────────────────────────────────────
 
 
 class LegalQueryDetailSerializer(serializers.ModelSerializer):
-    answers = LegalAnswerSerializer(many=True, read_only=True)
+    # OneToOne: "answer" singular, wrapped en lista para que React
+    # no tenga que cambiar de array a objeto.
+    answer = LegalAnswerSerializer(read_only=True)
 
     class Meta:
         model = LegalQuery
-        fields = ["id", "question", "created_at", "answers"]
+        fields = ["id", "question", "created_at", "answer"]
 
 
 # ── request body para /ask/ ───────────────────────────────────────────────────

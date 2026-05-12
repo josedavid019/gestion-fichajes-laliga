@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
 interface Player {
   id: number;
@@ -55,7 +56,7 @@ export function usePlayers(params?: Record<string, string | number>) {
         console.log(`[Page ${offset / limit + 1}] Fetching from: ${url}`);
 
         try {
-          const response = await fetch(url);
+          const response = await fetchWithAuth(url);
           if (!response.ok) {
             console.error("API Error:", response.status, response.statusText);
             throw new Error(`Failed to fetch players: ${response.statusText}`);
@@ -68,12 +69,16 @@ export function usePlayers(params?: Record<string, string | number>) {
           // Handle paginated response
           if (data.results) {
             batch = data.results;
-            console.log(`[Page ${offset / limit + 1}] Received ${batch.length} players (Total: ${data.count})`);
+            console.log(
+              `[Page ${offset / limit + 1}] Received ${batch.length} players (Total: ${data.count})`,
+            );
           }
           // Handle direct array response
           else if (Array.isArray(data)) {
             batch = data;
-            console.log(`[Page ${offset / limit + 1}] Received ${batch.length} players`);
+            console.log(
+              `[Page ${offset / limit + 1}] Received ${batch.length} players`,
+            );
           }
 
           if (batch.length === 0) {

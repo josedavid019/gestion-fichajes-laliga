@@ -23,10 +23,30 @@ const Login: React.FC = () => {
       toast.success("¡Sesión iniciada correctamente!");
       navigate("/");
     } catch (error: any) {
-      const errorMessage =
-        error.message === "Failed to fetch"
-          ? "No se pudo conectar con el servidor"
-          : error.message;
+      let errorMessage = "Error desconocido";
+
+      // Try to parse JSON error from backend
+      try {
+        const parsedError = JSON.parse(error.message);
+        if (parsedError.non_field_errors) {
+          errorMessage = parsedError.non_field_errors[0];
+        } else if (parsedError.email) {
+          errorMessage = parsedError.email[0];
+        } else if (parsedError.password) {
+          errorMessage = parsedError.password[0];
+        } else {
+          errorMessage =
+            Object.values(parsedError)[0]?.[0] || JSON.stringify(parsedError);
+        }
+      } catch {
+        // If not JSON, use error message as-is
+        errorMessage =
+          error.message === "Failed to fetch"
+            ? "No se pudo conectar con el servidor"
+            : error.message;
+      }
+
+      console.error("Login error:", error);
       toast.error(`Error: ${errorMessage}`);
     } finally {
       setIsLoading(false);
@@ -86,22 +106,11 @@ const Login: React.FC = () => {
             </Button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-slate-200">
-            <p className="text-center text-slate-600 mb-4">
-              ¿No tienes cuenta?{" "}
-              <Link
-                to="/register"
-                className="text-blue-600 hover:text-blue-700 font-semibold"
-              >
-                Regístrate aquí
-              </Link>
-            </p>
-          </div>
-
           <div className="mt-6 p-4 bg-blue-50 rounded-lg flex gap-3">
             <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-blue-700">
-              Si es tu primer acceso, necesitarás registrarte primero.
+              Si es tu primer acceso, contacta con el administrador para obtener
+              tus credenciales.
             </p>
           </div>
         </div>

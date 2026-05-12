@@ -10,21 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"; // Asumiendo que tienes Select
+import { CreateUserData } from "@/hooks/useAdminUsers";
 
-interface UserFormData {
-  email: string;
-  username: string;
-  first_name: string;
-  last_name: string;
-  is_active: boolean;
-  is_staff: boolean;
-  is_superuser: boolean;
-  role: "admin" | "director" | "scout";
-  // Profile fields
-  phone: string;
-  bio: string;
-  avatar?: File | null;
-}
+interface UserFormData extends CreateUserData {}
 
 interface UserFormProps {
   initialData?: Partial<UserFormData>;
@@ -44,14 +32,32 @@ const UserForm: React.FC<UserFormProps> = ({
     username: initialData.username || "",
     first_name: initialData.first_name || "",
     last_name: initialData.last_name || "",
+    password: initialData.password || "",
     is_active: initialData.is_active ?? true,
     is_staff: initialData.is_staff ?? false,
     is_superuser: initialData.is_superuser ?? false,
-    role: initialData.role || "scout",
+    role: initialData.role ?? "scout",
     phone: initialData.phone || "",
     bio: initialData.bio || "",
     avatar: null,
   });
+
+  useEffect(() => {
+    setFormData({
+      email: initialData.email || "",
+      username: initialData.username || "",
+      first_name: initialData.first_name || "",
+      last_name: initialData.last_name || "",
+      password: initialData.password || "",
+      is_active: initialData.is_active ?? true,
+      is_staff: initialData.is_staff ?? false,
+      is_superuser: initialData.is_superuser ?? false,
+      role: initialData.role ?? "scout",
+      phone: initialData.phone || "",
+      bio: initialData.bio || "",
+      avatar: null,
+    });
+  }, [initialData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +66,8 @@ const UserForm: React.FC<UserFormProps> = ({
       !formData.email ||
       !formData.username ||
       !formData.first_name ||
-      !formData.last_name
+      !formData.last_name ||
+      (!isEditing && !formData.password)
     ) {
       alert("Por favor completa todos los campos requeridos");
       return;
@@ -75,6 +82,11 @@ const UserForm: React.FC<UserFormProps> = ({
     const usernameRegex = /^[a-zA-Z0-9_]+$/;
     if (!usernameRegex.test(formData.username)) {
       alert("El username solo puede contener letras, números y guiones bajos");
+      return;
+    }
+    // Validación de contraseña
+    if (!isEditing && formData.password && formData.password.length < 6) {
+      alert("La contraseña debe tener al menos 6 caracteres");
       return;
     }
     onSubmit(formData);
@@ -131,6 +143,23 @@ const UserForm: React.FC<UserFormProps> = ({
                   className="mt-1"
                 />
               </div>
+              {!isEditing && (
+                <div>
+                  <Label htmlFor="password" className="text-slate-700">
+                    Contraseña *
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={(e) => handleChange("password", e.target.value)}
+                    required={!isEditing}
+                    minLength={6}
+                    className="mt-1"
+                  />
+                </div>
+              )}
               <div>
                 <Label htmlFor="role" className="text-slate-700">
                   Rol
@@ -143,9 +172,9 @@ const UserForm: React.FC<UserFormProps> = ({
                     <SelectValue placeholder="Selecciona un rol" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="scout">Scout</SelectItem>
-                    <SelectItem value="director">Directivo</SelectItem>
                     <SelectItem value="admin">Administrador</SelectItem>
+                    <SelectItem value="director">Directivo</SelectItem>
+                    <SelectItem value="scout">Scout</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

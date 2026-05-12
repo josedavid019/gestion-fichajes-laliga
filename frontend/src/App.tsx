@@ -15,7 +15,6 @@ import Scouting from "./pages/Scouting";
 import UserManagement from "./pages/UserManagement";
 import AuditLogs from "./pages/AuditLogs";
 import Login from "./pages/Login";
-import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,7 +29,6 @@ const App = () => (
           <Routes>
             {/* Auth routes without layout */}
             <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
 
             {/* Protected routes with layout */}
             <Route
