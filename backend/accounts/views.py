@@ -30,6 +30,21 @@ def login_view(request):
             status=status.HTTP_200_OK,
         )
 
+
+from .serializers import (
+    LoginSerializer,
+    UserSerializer,
+    ProfileSerializer,
+    AuditLogSerializer,
+)
+from .models import User, Profile, AuditLog
+
+
+@csrf_exempt
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def login_view(request):
+    """Autenticar usuario."""
     serializer = LoginSerializer(data=request.data, context={"request": request})
     if serializer.is_valid():
         user = serializer.context["user"]
@@ -37,7 +52,6 @@ def login_view(request):
 
         # Generate JWT tokens
         refresh = RefreshToken.for_user(user)
-
         return Response(
             {
                 "message": "Autenticación exitosa",

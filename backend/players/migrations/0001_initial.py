@@ -9,320 +9,760 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Country',
+            name="Country",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100, unique=True)),
-                ('iso_code', models.CharField(max_length=3, unique=True)),
-                ('flag_url', models.URLField(blank=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=100, unique=True)),
+                ("iso_code", models.CharField(max_length=3, unique=True)),
+                ("flag_url", models.URLField(blank=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'db_table': 'players_country',
+                "db_table": "players_country",
             },
         ),
         migrations.CreateModel(
-            name='Competition',
+            name="Competition",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=150)),
-                ('type', models.CharField(choices=[('league', 'League'), ('cup', 'Cup'), ('international', 'International'), ('friendly', 'Friendly')], default='league', max_length=20)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('country', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='competitions', to='players.country')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=150)),
+                (
+                    "type",
+                    models.CharField(
+                        choices=[
+                            ("league", "League"),
+                            ("cup", "Cup"),
+                            ("international", "International"),
+                            ("friendly", "Friendly"),
+                        ],
+                        default="league",
+                        max_length=20,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "country",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="competitions",
+                        to="players.country",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'players_competition',
+                "db_table": "players_competition",
             },
         ),
         migrations.CreateModel(
-            name='Club',
+            name="Club",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=150, unique=True)),
-                ('city', models.CharField(blank=True, max_length=100)),
-                ('founded_year', models.IntegerField(blank=True, null=True)),
-                ('stadium', models.CharField(blank=True, max_length=150)),
-                ('budget', models.DecimalField(blank=True, decimal_places=2, max_digits=14, null=True)),
-                ('logo_url', models.URLField(blank=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('country', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='clubs', to='players.country')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=150, unique=True)),
+                ("city", models.CharField(blank=True, max_length=100)),
+                ("founded_year", models.IntegerField(blank=True, null=True)),
+                ("stadium", models.CharField(blank=True, max_length=150)),
+                (
+                    "budget",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=14, null=True
+                    ),
+                ),
+                ("logo_url", models.URLField(blank=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "country",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="clubs",
+                        to="players.country",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'players_club',
+                "db_table": "players_club",
             },
         ),
         migrations.CreateModel(
-            name='Match',
+            name="Match",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('match_date', models.DateTimeField()),
-                ('home_score', models.IntegerField(blank=True, null=True)),
-                ('away_score', models.IntegerField(blank=True, null=True)),
-                ('status', models.CharField(choices=[('scheduled', 'Scheduled'), ('live', 'Live'), ('finished', 'Finished'), ('cancelled', 'Cancelled')], default='scheduled', max_length=20)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('away_club', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='away_matches', to='players.club')),
-                ('competition', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='matches', to='players.competition')),
-                ('home_club', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='home_matches', to='players.club')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("match_date", models.DateTimeField()),
+                ("home_score", models.IntegerField(blank=True, null=True)),
+                ("away_score", models.IntegerField(blank=True, null=True)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("scheduled", "Scheduled"),
+                            ("live", "Live"),
+                            ("finished", "Finished"),
+                            ("cancelled", "Cancelled"),
+                        ],
+                        default="scheduled",
+                        max_length=20,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "away_club",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="away_matches",
+                        to="players.club",
+                    ),
+                ),
+                (
+                    "competition",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="matches",
+                        to="players.competition",
+                    ),
+                ),
+                (
+                    "home_club",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="home_matches",
+                        to="players.club",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'players_match',
+                "db_table": "players_match",
             },
         ),
         migrations.CreateModel(
-            name='Player',
+            name="Player",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('first_name', models.CharField(max_length=100)),
-                ('last_name', models.CharField(max_length=100)),
-                ('alias', models.CharField(blank=True, max_length=100)),
-                ('date_of_birth', models.DateField(blank=True, null=True)),
-                ('shirt_number', models.PositiveSmallIntegerField(blank=True, null=True)),
-                ('height_cm', models.PositiveSmallIntegerField(blank=True, null=True)),
-                ('weight_kg', models.PositiveSmallIntegerField(blank=True, null=True)),
-                ('preferred_foot', models.CharField(blank=True, choices=[('left', 'Left'), ('right', 'Right'), ('both', 'Both')], max_length=10)),
-                ('status', models.CharField(choices=[('active', 'Activo'), ('injured', 'Lesionado'), ('suspended', 'Sancionado'), ('retired', 'Retirado'), ('free_agent', 'Libre')], default='active', max_length=20)),
-                ('market_value_eur', models.DecimalField(blank=True, decimal_places=2, max_digits=14, null=True)),
-                ('photo_url', models.URLField(blank=True)),
-                ('face_embedding', pgvector.django.vector.VectorField(blank=True, dimensions=512, null=True)),
-                ('external_id', models.CharField(blank=True, max_length=100, null=True, unique=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('current_club', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='current_players', to='players.club')),
-                ('nationality', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='players', to='players.country')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("first_name", models.CharField(max_length=100)),
+                ("last_name", models.CharField(max_length=100)),
+                ("alias", models.CharField(blank=True, max_length=100)),
+                ("date_of_birth", models.DateField(blank=True, null=True)),
+                (
+                    "shirt_number",
+                    models.PositiveSmallIntegerField(blank=True, null=True),
+                ),
+                ("height_cm", models.PositiveSmallIntegerField(blank=True, null=True)),
+                ("weight_kg", models.PositiveSmallIntegerField(blank=True, null=True)),
+                (
+                    "preferred_foot",
+                    models.CharField(
+                        blank=True,
+                        choices=[
+                            ("left", "Left"),
+                            ("right", "Right"),
+                            ("both", "Both"),
+                        ],
+                        max_length=10,
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("active", "Activo"),
+                            ("injured", "Lesionado"),
+                            ("suspended", "Sancionado"),
+                            ("retired", "Retirado"),
+                            ("free_agent", "Libre"),
+                        ],
+                        default="active",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "market_value_eur",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=14, null=True
+                    ),
+                ),
+                ("photo_url", models.URLField(blank=True)),
+                (
+                    "face_embedding",
+                    pgvector.django.vector.VectorField(
+                        blank=True, dimensions=512, null=True
+                    ),
+                ),
+                (
+                    "external_id",
+                    models.CharField(
+                        blank=True, max_length=100, null=True, unique=True
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "current_club",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="current_players",
+                        to="players.club",
+                    ),
+                ),
+                (
+                    "nationality",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="players",
+                        to="players.country",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'players_player',
+                "db_table": "players_player",
             },
         ),
         migrations.CreateModel(
-            name='Injury',
+            name="Injury",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('injury_type', models.CharField(choices=[('muscle', 'Lesión Muscular'), ('fracture', 'Fractura'), ('ligament', 'Lesión de Ligamento'), ('concussion', 'Conmoción'), ('other', 'Otra')], max_length=20)),
-                ('start_date', models.DateField()),
-                ('end_date', models.DateField(blank=True, null=True)),
-                ('description', models.TextField(blank=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('player', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='injuries', to='players.player')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "injury_type",
+                    models.CharField(
+                        choices=[
+                            ("muscle", "Lesión Muscular"),
+                            ("fracture", "Fractura"),
+                            ("ligament", "Lesión de Ligamento"),
+                            ("concussion", "Conmoción"),
+                            ("other", "Otra"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                ("start_date", models.DateField()),
+                ("end_date", models.DateField(blank=True, null=True)),
+                ("description", models.TextField(blank=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "player",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="injuries",
+                        to="players.player",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'players_injury',
-                'ordering': ['-start_date'],
+                "db_table": "players_injury",
+                "ordering": ["-start_date"],
             },
         ),
         migrations.CreateModel(
-            name='PlayerMatchStat',
+            name="PlayerMatchStat",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('goals', models.IntegerField(default=0)),
-                ('assists', models.IntegerField(default=0)),
-                ('minutes_played', models.IntegerField(default=0)),
-                ('yellow_cards', models.IntegerField(default=0)),
-                ('red_cards', models.IntegerField(default=0)),
-                ('match', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='player_stats', to='players.match')),
-                ('player', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='match_stats', to='players.player')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("goals", models.IntegerField(default=0)),
+                ("assists", models.IntegerField(default=0)),
+                ("minutes_played", models.IntegerField(default=0)),
+                ("yellow_cards", models.IntegerField(default=0)),
+                ("red_cards", models.IntegerField(default=0)),
+                (
+                    "match",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="player_stats",
+                        to="players.match",
+                    ),
+                ),
+                (
+                    "player",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="match_stats",
+                        to="players.player",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'players_player_match_stat',
+                "db_table": "players_player_match_stat",
             },
         ),
         migrations.CreateModel(
-            name='PlayerNationality',
+            name="PlayerNationality",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('country', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='players.country')),
-                ('player', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='nationalities', to='players.player')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "country",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="players.country",
+                    ),
+                ),
+                (
+                    "player",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="nationalities",
+                        to="players.player",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'players_player_nationality',
+                "db_table": "players_player_nationality",
             },
         ),
         migrations.CreateModel(
-            name='PlayerPosition',
+            name="PlayerPosition",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('position', models.CharField(choices=[('GK', 'Portero'), ('CB', 'Defensa Central'), ('LB', 'Lateral Izquierdo'), ('RB', 'Lateral Derecho'), ('CM', 'Centrocampista'), ('CDM', 'Centrocampista Defensivo'), ('CAM', 'Centrocampista Ofensivo'), ('LW', 'Extremo Izquierdo'), ('RW', 'Extremo Derecho'), ('ST', 'Delantero'), ('CF', 'Delantero Centro')], max_length=10)),
-                ('is_primary', models.BooleanField(default=False)),
-                ('player', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='positions', to='players.player')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "position",
+                    models.CharField(
+                        choices=[
+                            ("GK", "Portero"),
+                            ("CB", "Defensa Central"),
+                            ("LB", "Lateral Izquierdo"),
+                            ("RB", "Lateral Derecho"),
+                            ("CM", "Centrocampista"),
+                            ("CDM", "Centrocampista Defensivo"),
+                            ("CAM", "Centrocampista Ofensivo"),
+                            ("LW", "Extremo Izquierdo"),
+                            ("RW", "Extremo Derecho"),
+                            ("ST", "Delantero"),
+                            ("CF", "Delantero Centro"),
+                        ],
+                        max_length=10,
+                    ),
+                ),
+                ("is_primary", models.BooleanField(default=False)),
+                (
+                    "player",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="positions",
+                        to="players.player",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'players_player_position',
+                "db_table": "players_player_position",
             },
         ),
         migrations.CreateModel(
-            name='Season',
+            name="Season",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=20, unique=True)),
-                ('start_date', models.DateField()),
-                ('end_date', models.DateField()),
-                ('is_current', models.BooleanField(default=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=20, unique=True)),
+                ("start_date", models.DateField()),
+                ("end_date", models.DateField()),
+                ("is_current", models.BooleanField(default=False)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'db_table': 'players_season',
-                'constraints': [models.UniqueConstraint(condition=models.Q(('is_current', True)), fields=('is_current',), name='unique_current_season'), models.CheckConstraint(condition=models.Q(('start_date__lt', models.F('end_date'))), name='season_start_before_end')],
+                "db_table": "players_season",
+                "constraints": [
+                    models.UniqueConstraint(
+                        condition=models.Q(("is_current", True)),
+                        fields=("is_current",),
+                        name="unique_current_season",
+                    ),
+                    models.CheckConstraint(
+                        condition=models.Q(("start_date__lt", models.F("end_date"))),
+                        name="season_start_before_end",
+                    ),
+                ],
             },
         ),
         migrations.CreateModel(
-            name='PlayerClubHistory',
+            name="PlayerClubHistory",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('date_from', models.DateField()),
-                ('date_to', models.DateField(blank=True, null=True)),
-                ('loan', models.BooleanField(default=False)),
-                ('transfer_fee', models.DecimalField(blank=True, decimal_places=2, max_digits=14, null=True)),
-                ('is_current', models.BooleanField(default=False)),
-                ('club', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='player_history', to='players.club')),
-                ('player', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='club_history', to='players.player')),
-                ('season', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='players.season')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("date_from", models.DateField()),
+                ("date_to", models.DateField(blank=True, null=True)),
+                ("loan", models.BooleanField(default=False)),
+                (
+                    "transfer_fee",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=14, null=True
+                    ),
+                ),
+                ("is_current", models.BooleanField(default=False)),
+                (
+                    "club",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="player_history",
+                        to="players.club",
+                    ),
+                ),
+                (
+                    "player",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="club_history",
+                        to="players.player",
+                    ),
+                ),
+                (
+                    "season",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to="players.season",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'players_club_history',
-                'ordering': ['-date_from'],
+                "db_table": "players_club_history",
+                "ordering": ["-date_from"],
             },
         ),
         migrations.AddField(
-            model_name='match',
-            name='season',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='matches', to='players.season'),
+            model_name="match",
+            name="season",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="matches",
+                to="players.season",
+            ),
         ),
         migrations.CreateModel(
-            name='ClubCompetition',
+            name="ClubCompetition",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('club', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='competitions', to='players.club')),
-                ('competition', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='players.competition')),
-                ('season', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='players.season')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "club",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="competitions",
+                        to="players.club",
+                    ),
+                ),
+                (
+                    "competition",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="players.competition",
+                    ),
+                ),
+                (
+                    "season",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, to="players.season"
+                    ),
+                ),
             ],
             options={
-                'db_table': 'players_club_competition',
+                "db_table": "players_club_competition",
             },
         ),
         migrations.CreateModel(
-            name='SeasonPlayerStat',
+            name="SeasonPlayerStat",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('appearances', models.PositiveSmallIntegerField(default=0)),
-                ('minutes', models.PositiveIntegerField(default=0)),
-                ('goals', models.PositiveSmallIntegerField(default=0)),
-                ('assists', models.PositiveSmallIntegerField(default=0)),
-                ('yellow_cards', models.PositiveSmallIntegerField(default=0)),
-                ('red_cards', models.PositiveSmallIntegerField(default=0)),
-                ('avg_rating', models.DecimalField(blank=True, decimal_places=2, max_digits=4, null=True)),
-                ('club', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='season_stats', to='players.club')),
-                ('competition', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='players.competition')),
-                ('player', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='season_stats', to='players.player')),
-                ('season', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='player_stats', to='players.season')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("appearances", models.PositiveSmallIntegerField(default=0)),
+                ("minutes", models.PositiveIntegerField(default=0)),
+                ("goals", models.PositiveSmallIntegerField(default=0)),
+                ("assists", models.PositiveSmallIntegerField(default=0)),
+                ("yellow_cards", models.PositiveSmallIntegerField(default=0)),
+                ("red_cards", models.PositiveSmallIntegerField(default=0)),
+                (
+                    "avg_rating",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=4, null=True
+                    ),
+                ),
+                (
+                    "club",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="season_stats",
+                        to="players.club",
+                    ),
+                ),
+                (
+                    "competition",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to="players.competition",
+                    ),
+                ),
+                (
+                    "player",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="season_stats",
+                        to="players.player",
+                    ),
+                ),
+                (
+                    "season",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="player_stats",
+                        to="players.season",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'players_season_stat',
+                "db_table": "players_season_stat",
             },
         ),
         migrations.CreateModel(
-            name='Suspension',
+            name="Suspension",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('reason', models.CharField(max_length=255)),
-                ('matches_suspended', models.IntegerField()),
-                ('start_date', models.DateField()),
-                ('end_date', models.DateField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('player', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='suspensions', to='players.player')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("reason", models.CharField(max_length=255)),
+                ("matches_suspended", models.IntegerField()),
+                ("start_date", models.DateField()),
+                ("end_date", models.DateField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "player",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="suspensions",
+                        to="players.player",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'players_suspension',
-                'ordering': ['-start_date'],
+                "db_table": "players_suspension",
+                "ordering": ["-start_date"],
             },
         ),
         migrations.AddIndex(
-            model_name='player',
-            index=models.Index(fields=['status'], name='players_pla_status_6a7a33_idx'),
+            model_name="player",
+            index=models.Index(fields=["status"], name="players_pla_status_6a7a33_idx"),
         ),
         migrations.AddIndex(
-            model_name='player',
-            index=models.Index(fields=['current_club'], name='players_pla_current_41f105_idx'),
+            model_name="player",
+            index=models.Index(
+                fields=["current_club"], name="players_pla_current_41f105_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='playermatchstat',
-            index=models.Index(fields=['player'], name='players_pla_player__4d863e_idx'),
+            model_name="playermatchstat",
+            index=models.Index(
+                fields=["player"], name="players_pla_player__4d863e_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='playermatchstat',
-            index=models.Index(fields=['match'], name='players_pla_match_i_713a98_idx'),
+            model_name="playermatchstat",
+            index=models.Index(fields=["match"], name="players_pla_match_i_713a98_idx"),
         ),
         migrations.AddConstraint(
-            model_name='playermatchstat',
-            constraint=models.UniqueConstraint(fields=('player', 'match'), name='unique_player_match_stat'),
+            model_name="playermatchstat",
+            constraint=models.UniqueConstraint(
+                fields=("player", "match"), name="unique_player_match_stat"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='playernationality',
-            constraint=models.UniqueConstraint(fields=('player', 'country'), name='unique_player_country'),
+            model_name="playernationality",
+            constraint=models.UniqueConstraint(
+                fields=("player", "country"), name="unique_player_country"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='playerposition',
-            constraint=models.UniqueConstraint(fields=('player', 'position'), name='unique_player_position'),
+            model_name="playerposition",
+            constraint=models.UniqueConstraint(
+                fields=("player", "position"), name="unique_player_position"
+            ),
         ),
         migrations.AddIndex(
-            model_name='playerclubhistory',
-            index=models.Index(fields=['player'], name='players_clu_player__32f220_idx'),
+            model_name="playerclubhistory",
+            index=models.Index(
+                fields=["player"], name="players_clu_player__32f220_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='playerclubhistory',
-            index=models.Index(fields=['club'], name='players_clu_club_id_7dccd5_idx'),
+            model_name="playerclubhistory",
+            index=models.Index(fields=["club"], name="players_clu_club_id_7dccd5_idx"),
         ),
         migrations.AddIndex(
-            model_name='playerclubhistory',
-            index=models.Index(fields=['is_current'], name='players_clu_is_curr_c1d111_idx'),
+            model_name="playerclubhistory",
+            index=models.Index(
+                fields=["is_current"], name="players_clu_is_curr_c1d111_idx"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='playerclubhistory',
-            constraint=models.UniqueConstraint(condition=models.Q(('is_current', True)), fields=('player',), name='unique_current_club_history_per_player'),
+            model_name="playerclubhistory",
+            constraint=models.UniqueConstraint(
+                condition=models.Q(("is_current", True)),
+                fields=("player",),
+                name="unique_current_club_history_per_player",
+            ),
         ),
         migrations.AddIndex(
-            model_name='match',
-            index=models.Index(fields=['match_date'], name='players_mat_match_d_05aee5_idx'),
+            model_name="match",
+            index=models.Index(
+                fields=["match_date"], name="players_mat_match_d_05aee5_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='match',
-            index=models.Index(fields=['season'], name='players_mat_season__ea1683_idx'),
+            model_name="match",
+            index=models.Index(
+                fields=["season"], name="players_mat_season__ea1683_idx"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='match',
-            constraint=models.CheckConstraint(condition=models.Q(('home_club', models.F('away_club')), _negated=True), name='prevent_same_home_away_club'),
+            model_name="match",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("home_club", models.F("away_club")), _negated=True),
+                name="prevent_same_home_away_club",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='clubcompetition',
-            constraint=models.UniqueConstraint(fields=('club', 'competition', 'season'), name='unique_club_competition_season'),
+            model_name="clubcompetition",
+            constraint=models.UniqueConstraint(
+                fields=("club", "competition", "season"),
+                name="unique_club_competition_season",
+            ),
         ),
         migrations.AddIndex(
-            model_name='seasonplayerstat',
-            index=models.Index(fields=['player'], name='players_sea_player__afc0f9_idx'),
+            model_name="seasonplayerstat",
+            index=models.Index(
+                fields=["player"], name="players_sea_player__afc0f9_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='seasonplayerstat',
-            index=models.Index(fields=['season'], name='players_sea_season__72fe9c_idx'),
+            model_name="seasonplayerstat",
+            index=models.Index(
+                fields=["season"], name="players_sea_season__72fe9c_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='seasonplayerstat',
-            index=models.Index(fields=['club'], name='players_sea_club_id_a6944d_idx'),
+            model_name="seasonplayerstat",
+            index=models.Index(fields=["club"], name="players_sea_club_id_a6944d_idx"),
         ),
         migrations.AddConstraint(
-            model_name='seasonplayerstat',
-            constraint=models.UniqueConstraint(fields=('player', 'season', 'club', 'competition'), name='unique_player_season_club_competition'),
+            model_name="seasonplayerstat",
+            constraint=models.UniqueConstraint(
+                fields=("player", "season", "club", "competition"),
+                name="unique_player_season_club_competition",
+            ),
         ),
     ]

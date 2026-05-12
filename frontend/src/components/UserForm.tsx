@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox"; // Asumiendo que tienes un componente Checkbox
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"; // Asumiendo que tienes Select
+} from "@/components/ui/select";
 import { CreateUserData } from "@/hooks/useAdminUsers";
 
 interface UserFormData extends CreateUserData {}
@@ -61,7 +61,7 @@ const UserForm: React.FC<UserFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Validaciones básicas
+
     if (
       !formData.email ||
       !formData.username ||
@@ -72,23 +72,24 @@ const UserForm: React.FC<UserFormProps> = ({
       alert("Por favor completa todos los campos requeridos");
       return;
     }
-    // Validación de email
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       alert("Por favor ingresa un email válido");
       return;
     }
-    // Validación de username
+
     const usernameRegex = /^[a-zA-Z0-9_]+$/;
     if (!usernameRegex.test(formData.username)) {
       alert("El username solo puede contener letras, números y guiones bajos");
       return;
     }
-    // Validación de contraseña
+
     if (!isEditing && formData.password && formData.password.length < 6) {
       alert("La contraseña debe tener al menos 6 caracteres");
       return;
     }
+
     onSubmit(formData);
   };
 
@@ -102,7 +103,6 @@ const UserForm: React.FC<UserFormProps> = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
-        {/* Sección Datos de cuenta - Izquierda */}
         <div className="bg-white border border-slate-200 rounded-3xl shadow-sm p-8">
           <div className="space-y-3">
             <div>
@@ -172,9 +172,9 @@ const UserForm: React.FC<UserFormProps> = ({
                     <SelectValue placeholder="Selecciona un rol" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="director">Directivo</SelectItem>
                     <SelectItem value="scout">Scout</SelectItem>
+                    <SelectItem value="director">Directivo</SelectItem>
+                    <SelectItem value="admin">Administrador</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -232,7 +232,6 @@ const UserForm: React.FC<UserFormProps> = ({
           </div>
         </div>
 
-        {/* Sección Información personal - Derecha */}
         <div className="bg-white border border-slate-200 rounded-3xl shadow-sm p-8">
           <div className="space-y-3">
             <div>
