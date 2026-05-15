@@ -48,7 +48,7 @@ export default function Reports() {
 
   // Get unique positions
   const uniquePositions = Array.from(
-    new Set(players.map((p) => p.position).filter(Boolean))
+    new Set(players.map((p) => p.position).filter(Boolean)),
   ).sort() as string[];
 
   // Define value ranges for filtering
@@ -65,13 +65,15 @@ export default function Reports() {
     const club = p.current_club?.name.toLowerCase() || "";
     const filterLower = filter.toLowerCase();
 
-    const matchesSearch = fullName.includes(filterLower) || club.includes(filterLower);
-    const matchesPosition = !selectedPosition || p.position === selectedPosition;
-    
+    const matchesSearch =
+      fullName.includes(filterLower) || club.includes(filterLower);
+    const matchesPosition =
+      !selectedPosition || p.position === selectedPosition;
+
     // Filter by market value
     let matchesValue = true;
     if (selectedValueRange) {
-      const range = valueRanges.find(r => r.label === selectedValueRange);
+      const range = valueRanges.find((r) => r.label === selectedValueRange);
       if (range) {
         const playerValue = parseFloat(p.market_value_eur as string) || 0;
         matchesValue = playerValue >= range.min && playerValue < range.max;
@@ -88,10 +90,12 @@ export default function Reports() {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && displayedCount < filtered.length) {
-          setDisplayedCount((prev) => Math.min(prev + ITEMS_PER_LOAD, filtered.length));
+          setDisplayedCount((prev) =>
+            Math.min(prev + ITEMS_PER_LOAD, filtered.length),
+          );
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     if (observerTarget.current) {
@@ -120,7 +124,9 @@ export default function Reports() {
 
   const avgAge =
     players.length > 0
-      ? (players.reduce((sum, p) => sum + (p.age || 0), 0) / players.length).toFixed(1)
+      ? (
+          players.reduce((sum, p) => sum + (p.age || 0), 0) / players.length
+        ).toFixed(1)
       : "0";
 
   return (
@@ -128,21 +134,39 @@ export default function Reports() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-heading font-bold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">Explora y analiza jugadores de La Liga</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Explora y analiza jugadores de La Liga
+          </p>
         </div>
-
       </div>
+
+      {/* La Liga Report */}
+      <PowerBIDashboard
+        title="Laliga"
+        reportId="e5773083-c8dc-4428-abba-40cc50e7f442"
+        ctid="740be6bd-fd36-470e-94d9-0f0c777fadb9"
+      />
 
       {/* Summary KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: "Total Jugadores", value: players.length.toString() },
-          { label: "Valor Acumulado", value: `€${(totalValue / 1000000).toFixed(1)}M` },
+          {
+            label: "Valor Acumulado",
+            value: `€${(totalValue / 1000000).toFixed(1)}M`,
+          },
           { label: "Promedio Edad", value: avgAge },
-          { label: "Estado Activo", value: players.filter(p => p.status === "active").length.toString() },
+          {
+            label: "Estado Activo",
+            value: players
+              .filter((p) => p.status === "active")
+              .length.toString(),
+          },
         ].map((kpi) => (
           <div key={kpi.label} className="stat-card text-center">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{kpi.label}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              {kpi.label}
+            </p>
             <p className="text-xl font-heading font-bold mt-1">{kpi.value}</p>
           </div>
         ))}
@@ -187,24 +211,40 @@ export default function Reports() {
               </option>
             ))}
           </select>
-          <p className="text-xs text-muted-foreground whitespace-nowrap">{displayedCount} de {filtered.length} resultados</p>
+          <p className="text-xs text-muted-foreground whitespace-nowrap">
+            {displayedCount} de {filtered.length} resultados
+          </p>
         </div>
 
         {isLoading ? (
           <p className="text-center py-8">Cargando...</p>
         ) : error ? (
-          <p className="text-center py-8 text-destructive">Error cargando datos</p>
+          <p className="text-center py-8 text-destructive">
+            Error cargando datos
+          </p>
         ) : (
           <div className="overflow-y-auto max-h-screen">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-muted/50">
                 <tr className="border-b border-border/50">
-                  <th className="text-left py-3 px-3 text-[10px] font-semibold text-muted-foreground">Jugador</th>
-                  <th className="text-left py-3 px-3 text-[10px] font-semibold text-muted-foreground">Posición</th>
-                  <th className="text-left py-3 px-3 text-[10px] font-semibold text-muted-foreground">Club</th>
-                  <th className="text-left py-3 px-3 text-[10px] font-semibold text-muted-foreground">Edad</th>
-                  <th className="text-left py-3 px-3 text-[10px] font-semibold text-muted-foreground">Valor</th>
-                  <th className="text-left py-3 px-3 text-[10px] font-semibold text-muted-foreground">Estado</th>
+                  <th className="text-left py-3 px-3 text-[10px] font-semibold text-muted-foreground">
+                    Jugador
+                  </th>
+                  <th className="text-left py-3 px-3 text-[10px] font-semibold text-muted-foreground">
+                    Posición
+                  </th>
+                  <th className="text-left py-3 px-3 text-[10px] font-semibold text-muted-foreground">
+                    Club
+                  </th>
+                  <th className="text-left py-3 px-3 text-[10px] font-semibold text-muted-foreground">
+                    Edad
+                  </th>
+                  <th className="text-left py-3 px-3 text-[10px] font-semibold text-muted-foreground">
+                    Valor
+                  </th>
+                  <th className="text-left py-3 px-3 text-[10px] font-semibold text-muted-foreground">
+                    Estado
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -215,17 +255,33 @@ export default function Reports() {
                       className="border-b border-border/20 hover:bg-muted/30 cursor-pointer transition-colors"
                       onClick={() => setSelectedPlayer(player)}
                     >
-                      <td className="py-3 px-3 text-xs font-medium">{player.alias}</td>
-                      <td className="py-3 px-3 text-xs text-muted-foreground">{player.position || "N/A"}</td>
-                      <td className="py-3 px-3 text-xs text-muted-foreground">{player.current_club?.name || "N/A"}</td>
-                      <td className="py-3 px-3 text-xs text-muted-foreground">{player.age || "N/A"}</td>
-                      <td className="py-3 px-3 text-xs font-semibold">{player.market_value_eur ? `€${(parseFloat(player.market_value_eur as string) / 1000000).toFixed(1)}M` : "N/A"}</td>
+                      <td className="py-3 px-3 text-xs font-medium">
+                        {player.alias}
+                      </td>
+                      <td className="py-3 px-3 text-xs text-muted-foreground">
+                        {player.position || "N/A"}
+                      </td>
+                      <td className="py-3 px-3 text-xs text-muted-foreground">
+                        {player.current_club?.name || "N/A"}
+                      </td>
+                      <td className="py-3 px-3 text-xs text-muted-foreground">
+                        {player.age || "N/A"}
+                      </td>
+                      <td className="py-3 px-3 text-xs font-semibold">
+                        {player.market_value_eur
+                          ? `€${(parseFloat(player.market_value_eur as string) / 1000000).toFixed(1)}M`
+                          : "N/A"}
+                      </td>
                       <td className="py-3 px-3 text-xs">
-                        <span className={`px-2 py-1 rounded text-[10px] font-medium ${
-                          player.status === "active" ? "bg-success/10 text-success" :
-                          player.status === "injured" ? "bg-warning/10 text-warning" :
-                          "bg-muted/10 text-muted-foreground"
-                        }`}>
+                        <span
+                          className={`px-2 py-1 rounded text-[10px] font-medium ${
+                            player.status === "active"
+                              ? "bg-success/10 text-success"
+                              : player.status === "injured"
+                                ? "bg-warning/10 text-warning"
+                                : "bg-muted/10 text-muted-foreground"
+                          }`}
+                        >
                           {player.status}
                         </span>
                       </td>
@@ -233,27 +289,27 @@ export default function Reports() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="py-8 px-3 text-center text-xs">Sin resultados</td>
+                    <td colSpan={6} className="py-8 px-3 text-center text-xs">
+                      Sin resultados
+                    </td>
                   </tr>
                 )}
               </tbody>
             </table>
 
             {/* Intersection observer target for infinite scroll */}
-            <div ref={observerTarget} className="py-4 text-center text-xs text-muted-foreground">
+            <div
+              ref={observerTarget}
+              className="py-4 text-center text-xs text-muted-foreground"
+            >
               {displayedCount < filtered.length && "Cargando más..."}
-              {displayedCount >= filtered.length && filtered.length > 0 && "Fin de los resultados"}
+              {displayedCount >= filtered.length &&
+                filtered.length > 0 &&
+                "Fin de los resultados"}
             </div>
           </div>
         )}
       </div>
-
-      {/* La Liga Report */}
-      <PowerBIDashboard
-        title="Laliga"
-        reportId="e5773083-c8dc-4428-abba-40cc50e7f442"
-        ctid="740be6bd-fd36-470e-94d9-0f0c777fadb9"
-      />
 
       {/* Player Card Modal */}
       {selectedPlayer && (

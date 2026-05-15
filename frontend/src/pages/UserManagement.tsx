@@ -351,28 +351,22 @@ const UserManagement: React.FC = () => {
             <thead className="bg-slate-50 text-slate-900">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-900">
-                  Email
+                  Nombre completo
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-900">
                   Username
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-900">
-                  Nombre completo
+                  Email
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-900">
-                  Rol
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-900">
-                  Staff
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-900">
-                  Superusuario
+                  Role
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-900">
                   Registrado
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-900">
-                  Estado
+                  Activo
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-900">
                   Acciones
@@ -389,13 +383,13 @@ const UserManagement: React.FC = () => {
                       className="group bg-white hover:bg-slate-50 transition-colors"
                     >
                       <td className="px-6 py-4 text-sm text-slate-900 whitespace-nowrap">
-                        {user.email}
+                        {user.first_name} {user.last_name}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-700 font-mono whitespace-nowrap">
                         @{user.username}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-900 whitespace-nowrap">
-                        {user.first_name} {user.last_name}
+                        {user.email}
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <span
@@ -407,28 +401,6 @@ const UserManagement: React.FC = () => {
                             <Shield className="w-3 h-3 mr-1" />
                           )}
                           {ROLE_LABELS[roleKey] || "Sin rol"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                            user.is_staff
-                              ? "bg-amber-100 text-amber-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {user.is_staff ? "Sí" : "No"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                            user.is_superuser
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {user.is_superuser ? "Sí" : "No"}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-700">
@@ -468,7 +440,7 @@ const UserManagement: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={9} className="px-6 py-8 text-center">
+                  <td colSpan={7} className="px-6 py-8 text-center">
                     <p className="text-slate-500">
                       {searchTerm
                         ? "No se encontraron usuarios"

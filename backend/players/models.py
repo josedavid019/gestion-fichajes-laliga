@@ -1,42 +1,18 @@
 from django.db import models
 from pgvector.django import VectorField
 from django.db.models import Q
+from django.utils import timezone
 
 
 class Country(models.Model):
     name = models.CharField(max_length=100, unique=True)
-    iso_code = models.CharField(max_length=3, unique=True)
+    code = models.CharField(max_length=6, blank=True, default="")
     flag_url = models.URLField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "players_country"
-
-    def __str__(self):
-        return self.name
-
-
-class Competition(models.Model):
-    COMPETITION_TYPES = [
-        ("league", "League"),
-        ("cup", "Cup"),
-        ("international", "International"),
-        ("friendly", "Friendly"),
-    ]
-    name = models.CharField(max_length=150)
-    country = models.ForeignKey(
-        Country,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name="competitions",
-    )
-    type = models.CharField(max_length=20, choices=COMPETITION_TYPES, default="league")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = "players_competition"
 
     def __str__(self):
         return self.name
@@ -68,6 +44,30 @@ class Season(models.Model):
         return self.name
 
 
+class Competition(models.Model):
+    name = models.CharField(max_length=150)
+    country = models.ForeignKey(
+        Country,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="competitions",
+    )
+    type = models.CharField(max_length=50, blank=True)
+    external_id = models.IntegerField(unique=True, null=True, blank=True)
+    code = models.CharField(max_length=20, blank=True)
+    logo_url = models.URLField(blank=True)
+    is_current = models.BooleanField(default=False)
+    season_year = models.IntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "players_competition"
+
+    def __str__(self):
+        return self.name
+
+
 class Club(models.Model):
     name = models.CharField(max_length=150, unique=True)
     country = models.ForeignKey(
@@ -79,8 +79,13 @@ class Club(models.Model):
     city = models.CharField(max_length=100, blank=True)
     founded_year = models.IntegerField(null=True, blank=True)
     stadium = models.CharField(max_length=150, blank=True)
+    stadium_capacity = models.IntegerField(null=True, blank=True)
+    stadium_image = models.URLField(blank=True)
     budget = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     logo_url = models.URLField(blank=True)
+    external_id = models.IntegerField(unique=True, null=True, blank=True)
+    code = models.CharField(max_length=20, blank=True)
+    national = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -92,28 +97,17 @@ class Club(models.Model):
 
 
 class Player(models.Model):
-    STATUS = [
-        ("active", "Activo"),
-        ("injured", "Lesionado"),
-        ("suspended", "Sancionado"),
-        ("retired", "Retirado"),
-        ("free_agent", "Libre"),
-    ]
-    FOOT_CHOICES = [
-        ("left", "Left"),
-        ("right", "Right"),
-        ("both", "Both"),
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("injured", "Injured"),
+        ("suspended", "Suspended"),
+        ("inactive", "Inactive"),
     ]
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     alias = models.CharField(max_length=100, blank=True)
+    full_name = models.CharField(max_length=200, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
-    nationality = models.ForeignKey(
-        Country,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name="players",
-    )
     current_club = models.ForeignKey(
         Club,
         on_delete=models.SET_NULL,
@@ -124,14 +118,16 @@ class Player(models.Model):
     shirt_number = models.PositiveSmallIntegerField(null=True, blank=True)
     height_cm = models.PositiveSmallIntegerField(null=True, blank=True)
     weight_kg = models.PositiveSmallIntegerField(null=True, blank=True)
-    preferred_foot = models.CharField(max_length=10, choices=FOOT_CHOICES, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS, default="active")
+    preferred_foot = models.CharField(max_length=20, blank=True)
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="active", blank=True
+    )
     market_value_eur = models.DecimalField(
         max_digits=14, decimal_places=2, null=True, blank=True
     )
     photo_url = models.URLField(blank=True)
+    external_id = models.IntegerField(unique=True, null=True, blank=True)
     face_embedding = VectorField(dimensions=512, null=True, blank=True)
-    external_id = models.CharField(max_length=100, blank=True, unique=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -140,14 +136,84 @@ class Player(models.Model):
         indexes = [
             models.Index(fields=["status"]),
             models.Index(fields=["current_club"]),
+            models.Index(fields=["full_name"]),
+        ]
+
+    @property
+    def age(self):
+        if not self.date_of_birth:
+            return None
+        today = timezone.now().date()
+        dob = self.date_of_birth
+        return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
+    @property
+    def position(self):
+        primary = self.positions.filter(is_primary=True).first()
+        if primary:
+            return primary.position
+        first = self.positions.first()
+        return first.position if first else None
+
+    @property
+    def nationality(self):
+        primary = self.nationalities.filter(is_primary=True).first()
+        if primary:
+            return primary.country
+        first = self.nationalities.first()
+        return first.country if first else None
+
+    @property
+    def is_injured(self):
+        return self.injuries.filter(
+            start_date__lte=timezone.now().date(), end_date__isnull=True
+        ).exists()
+
+    def __str__(self):
+        return self.alias or self.full_name
+
+
+class PlayerPosition(models.Model):
+    player = models.ForeignKey(
+        Player, on_delete=models.CASCADE, related_name="positions"
+    )
+    position = models.CharField(max_length=50)
+    is_primary = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "players_player_position"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["player", "position"], name="unique_player_position"
+            )
         ]
 
     def __str__(self):
-        return self.alias or f"{self.first_name} {self.last_name}"
+        return f"{self.player} — {self.position}"
 
-    @property
-    def full_name(self):
-        return f"{self.first_name} {self.last_name}"
+
+class PlayerNationality(models.Model):
+    player = models.ForeignKey(
+        Player, on_delete=models.CASCADE, related_name="nationalities"
+    )
+    country = models.ForeignKey(Country, on_delete=models.CASCADE)
+    is_primary = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "players_player_nationality"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["player", "country"], name="unique_player_country"
+            ),
+            models.UniqueConstraint(
+                fields=["player"],
+                condition=Q(is_primary=True),
+                name="unique_primary_nationality_per_player",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.player} — {self.country}"
 
 
 class PlayerClubHistory(models.Model):
@@ -161,9 +227,7 @@ class PlayerClubHistory(models.Model):
     date_from = models.DateField()
     date_to = models.DateField(null=True, blank=True)
     loan = models.BooleanField(default=False)
-    transfer_fee = models.DecimalField(
-        max_digits=14, decimal_places=2, null=True, blank=True
-    )
+    transfer_fee = models.CharField(max_length=50, blank=True, default="")
     is_current = models.BooleanField(default=False)
 
     class Meta:
@@ -174,7 +238,6 @@ class PlayerClubHistory(models.Model):
             models.Index(fields=["club"]),
             models.Index(fields=["is_current"]),
         ]
-
         constraints = [
             models.UniqueConstraint(
                 fields=["player"],
@@ -205,7 +268,7 @@ class SeasonPlayerStat(models.Model):
     yellow_cards = models.PositiveSmallIntegerField(default=0)
     red_cards = models.PositiveSmallIntegerField(default=0)
     avg_rating = models.DecimalField(
-        max_digits=4, decimal_places=2, null=True, blank=True
+        max_digits=5, decimal_places=2, null=True, blank=True
     )
 
     class Meta:
@@ -224,56 +287,6 @@ class SeasonPlayerStat(models.Model):
 
     def __str__(self):
         return f"{self.player} — {self.season} — {self.goals}G {self.assists}A"
-
-
-class PlayerPosition(models.Model):
-    POSITION_CHOICES = [
-        ("GK", "Portero"),
-        ("CB", "Defensa Central"),
-        ("LB", "Lateral Izquierdo"),
-        ("RB", "Lateral Derecho"),
-        ("CM", "Centrocampista"),
-        ("CDM", "Centrocampista Defensivo"),
-        ("CAM", "Centrocampista Ofensivo"),
-        ("LW", "Extremo Izquierdo"),
-        ("RW", "Extremo Derecho"),
-        ("ST", "Delantero"),
-        ("CF", "Delantero Centro"),
-    ]
-    player = models.ForeignKey(
-        Player, on_delete=models.CASCADE, related_name="positions"
-    )
-    position = models.CharField(max_length=10, choices=POSITION_CHOICES)
-    is_primary = models.BooleanField(default=False)
-
-    class Meta:
-        db_table = "players_player_position"
-        constraints = [
-            models.UniqueConstraint(
-                fields=["player", "position"], name="unique_player_position"
-            )
-        ]
-
-    def __str__(self):
-        return f"{self.player} — {self.position}"
-
-
-class PlayerNationality(models.Model):
-    player = models.ForeignKey(
-        Player, on_delete=models.CASCADE, related_name="nationalities"
-    )
-    country = models.ForeignKey(Country, on_delete=models.CASCADE)
-
-    class Meta:
-        db_table = "players_player_nationality"
-        constraints = [
-            models.UniqueConstraint(
-                fields=["player", "country"], name="unique_player_country"
-            )
-        ]
-
-    def __str__(self):
-        return f"{self.player} — {self.country}"
 
 
 class ClubCompetition(models.Model):
@@ -304,7 +317,31 @@ class Match(models.Model):
         ("live", "Live"),
         ("finished", "Finished"),
         ("cancelled", "Cancelled"),
+        ("postponed", "Postponed"),
     ]
+
+    STATUS_MAP = {
+        "NS": "scheduled",
+        "TBD": "scheduled",
+        "1H": "live",
+        "HT": "live",
+        "2H": "live",
+        "ET": "live",
+        "BT": "live",
+        "P": "live",
+        "LIVE": "live",
+        "FT": "finished",
+        "AET": "finished",
+        "PEN": "finished",
+        "CANC": "cancelled",
+        "ABD": "cancelled",
+        "PST": "postponed",
+        "SUSP": "postponed",
+        "INT": "postponed",
+        "AWD": "finished",
+        "WO": "finished",
+    }
+
     competition = models.ForeignKey(
         Competition, on_delete=models.CASCADE, related_name="matches"
     )
@@ -315,6 +352,7 @@ class Match(models.Model):
     away_club = models.ForeignKey(
         Club, on_delete=models.CASCADE, related_name="away_matches"
     )
+    external_id = models.IntegerField(unique=True, null=True, blank=True)
     match_date = models.DateTimeField()
     home_score = models.IntegerField(null=True, blank=True)
     away_score = models.IntegerField(null=True, blank=True)
@@ -327,6 +365,7 @@ class Match(models.Model):
         indexes = [
             models.Index(fields=["match_date"]),
             models.Index(fields=["season"]),
+            models.Index(fields=["external_id"]),
         ]
         constraints = [
             models.CheckConstraint(
@@ -369,17 +408,10 @@ class PlayerMatchStat(models.Model):
 
 
 class Injury(models.Model):
-    INJURY_TYPES = [
-        ("muscle", "Lesión Muscular"),
-        ("fracture", "Fractura"),
-        ("ligament", "Lesión de Ligamento"),
-        ("concussion", "Conmoción"),
-        ("other", "Otra"),
-    ]
     player = models.ForeignKey(
         Player, on_delete=models.CASCADE, related_name="injuries"
     )
-    injury_type = models.CharField(max_length=20, choices=INJURY_TYPES)
+    injury_type = models.CharField(max_length=50)
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
     description = models.TextField(blank=True)
@@ -399,7 +431,7 @@ class Suspension(models.Model):
         Player, on_delete=models.CASCADE, related_name="suspensions"
     )
     reason = models.CharField(max_length=255)
-    matches_suspended = models.IntegerField()
+    matches_suspended = models.IntegerField(null=True, blank=True)
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -410,4 +442,4 @@ class Suspension(models.Model):
         ordering = ["-start_date"]
 
     def __str__(self):
-        return f"{self.player} — {self.reason} ({self.matches_suspended} matches)"
+        return f"{self.player} — {self.reason} ({self.start_date})"
