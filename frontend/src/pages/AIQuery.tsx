@@ -7,9 +7,11 @@ import {
   WifiOff,
   Loader2,
 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
 const BASE = import.meta.env.VITE_DJANGO_URL ?? "http://localhost:8000";
 const RAG = `${BASE}/api/rag`;
@@ -27,15 +29,77 @@ export default function AIQuery() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null); // { answer, chunks }
   const [error, setError] = useState(null);
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState<any[]>([]);
   const [serverOk, setServerOk] = useState(null); // null | true | false
+
+  const fetchHistory = useCallback(async () => {
+    try {
+      const res = await fetchWithAuth(`${RAG}/history/`, {
+        method: "GET",
+      });
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          setHistory([]);
+          return;
+        }
+        throw new Error(`Error ${res.status}`);
+      }
+      const data = await res.json();
+      // Keep full objects (question + answer) so clicking shows stored answer
+      setHistory(data);
+    } catch {
+      setHistory([]);
+    }
+  }, []);
+  const deleteHistoryItem = useCallback(
+    async (id) => {
+      if (!window.confirm("¿Borrar esta entrada del historial?")) return;
+      try {
+        const res = await fetchWithAuth(`${RAG}/history/${id}/`, {
+          method: "DELETE",
+        });
+        if (!res.ok) throw new Error("No se pudo borrar");
+        setHistory((h) => h.filter((it) => it.id !== id));
+        // If currently showing that result, clear it
+        if (result && result.query_id === id) setResult(null);
+      } catch (e) {
+        console.error(e);
+        alert("Error al borrar la entrada");
+      }
+    },
+    [result],
+  );
+
+  const clearAllHistory = useCallback(async () => {
+    if (
+      !window.confirm(
+        "¿Borrar todo el historial? Esta acción no se puede deshacer.",
+      )
+    )
+      return;
+    try {
+      const res = await fetchWithAuth(`${RAG}/history/clear/`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("No se pudo borrar todo");
+      setHistory([]);
+      setResult(null);
+    } catch (e) {
+      console.error(e);
+      alert("Error al borrar todo el historial");
+    }
+  }, []);
 
   // ── health check ────────────────────────────────────────────────
   useEffect(() => {
-    fetch(`${RAG}/health/`, { credentials: "include" })
+    fetchWithAuth(`${RAG}/health/`)
       .then((r) => setServerOk(r.ok))
       .catch(() => setServerOk(false));
   }, []);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
 
   // ── consulta al RAG ─────────────────────────────────────────────
   const handleSubmit = useCallback(
@@ -48,9 +112,8 @@ export default function AIQuery() {
       setResult(null);
 
       try {
-        const res = await fetch(`${RAG}/ask/`, {
+        const res = await fetchWithAuth(`${RAG}/ask/`, {
           method: "POST",
-          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ question: q, top_k: 5 }),
           signal: AbortSignal.timeout(40_000),
@@ -60,9 +123,7 @@ export default function AIQuery() {
         if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
 
         setResult(data);
-
-        // guardar en historial (máx 10, sin duplicados)
-        setHistory((prev) => [q, ...prev.filter((h) => h !== q)].slice(0, 10));
+        fetchHistory();
       } catch (e) {
         setError(
           e.name === "TimeoutError"
@@ -80,16 +141,26 @@ export default function AIQuery() {
     if (e.key === "Enter") handleSubmit();
   }
 
-  function useHistoryItem(q) {
-    setQuery(q);
-    handleSubmit(q);
+  function useHistoryItem(item) {
+    // When clicking history, show stored question + answer without requerying
+    setQuery(item.question || "");
+    if (item.answer) {
+      setResult({
+        answer: item.answer.answer_text,
+        chunks: item.answer.sources,
+      });
+    } else {
+      setResult(null);
+    }
   }
 
   // ── render ──────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-heading font-bold">Consulta IA / RAG</h1>
+        <h1 className="text-2xl font-heading font-bold">
+          Consulta de reglamento
+        </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Buscador inteligente sobre reglamentación FIFA y LaLiga
         </p>
@@ -148,23 +219,25 @@ export default function AIQuery() {
             </div>
 
             {/* Chips de preguntas rápidas */}
-            <div className="flex flex-wrap gap-2 mt-3">
-              {QUICK_CHIPS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => {
-                    setQuery(c);
-                    handleSubmit(c);
-                  }}
-                  disabled={loading}
-                  className="text-[11px] px-3 py-1 rounded-full border border-border/40
-                             text-muted-foreground hover:border-primary/50 hover:text-foreground
-                             transition-colors disabled:opacity-40"
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
+            {!result && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {QUICK_CHIPS.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => {
+                      setQuery(c);
+                      handleSubmit(c);
+                    }}
+                    disabled={loading}
+                    className="text-[11px] px-3 py-1 rounded-full border border-border/40
+                               text-muted-foreground hover:border-primary/50 hover:text-foreground
+                               transition-colors disabled:opacity-40"
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Error */}
@@ -260,9 +333,17 @@ export default function AIQuery() {
 
         {/* ── Historial ── */}
         <div className="glass-card p-5 h-fit">
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="w-4 h-4 text-muted-foreground" />
-            <h3 className="font-heading font-semibold text-sm">Historial</h3>
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <h3 className="font-heading font-semibold text-sm">Historial</h3>
+            </div>
+            {history.length > 0 && (
+              <Button size="sm" variant="ghost" onClick={clearAllHistory}>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Borrar todo
+              </Button>
+            )}
           </div>
 
           {history.length === 0 ? (
@@ -271,16 +352,40 @@ export default function AIQuery() {
             </p>
           ) : (
             <div className="space-y-2">
-              {history.map((q, i) => (
-                <button
+              {history.map((item, i) => (
+                <div
                   key={i}
-                  className="w-full text-left p-3 rounded-lg bg-muted/30 hover:bg-muted/60 transition-colors"
-                  onClick={() => useHistoryItem(q)}
+                  className="w-full flex items-start justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/60 transition-colors"
                 >
-                  <p className="text-[11px] text-foreground/80 line-clamp-2">
-                    {q}
-                  </p>
-                </button>
+                  <button
+                    className="text-left flex-1"
+                    onClick={() => useHistoryItem(item)}
+                  >
+                    <p className="text-[11px] text-foreground/80 line-clamp-2">
+                      {item.question}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {item.answer?.answer_text && (
+                        <p className="text-[11px] text-muted-foreground line-clamp-2">
+                          {item.answer.answer_text}
+                        </p>
+                      )}
+                      <span className="text-[10px] text-muted-foreground ml-2">
+                        {item.created_at
+                          ? new Date(item.created_at).toLocaleString()
+                          : ""}
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    className="ml-3 text-red-500 hover:text-red-700"
+                    onClick={() => deleteHistoryItem(item.id)}
+                    aria-label="Borrar historial"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               ))}
             </div>
           )}

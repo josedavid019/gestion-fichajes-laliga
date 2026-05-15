@@ -66,22 +66,13 @@ class LegalAnswerSerializer(serializers.ModelSerializer):
 
 
 class LegalQueryListSerializer(serializers.ModelSerializer):
-    # LegalQuery → LegalAnswer es OneToOne, no hay "answers" en plural.
-    # Usamos SerializerMethodField para no romper cuando answer no existe.
-    has_answer = serializers.SerializerMethodField()
-    answer_preview = serializers.SerializerMethodField()
+    # Incluir la respuesta completa cuando exista para que el frontend
+    # pueda mostrar pregunta + respuesta sin volver a consultar al RAG.
+    answer = LegalAnswerSerializer(read_only=True)
 
     class Meta:
         model = LegalQuery
-        fields = ["id", "question", "created_at", "has_answer", "answer_preview"]
-
-    def get_has_answer(self, obj):
-        return hasattr(obj, "answer")
-
-    def get_answer_preview(self, obj):
-        if hasattr(obj, "answer"):
-            return obj.answer.answer_text[:150]
-        return None
+        fields = ["id", "question", "created_at", "answer"]
 
 
 # ── consulta (detail) ─────────────────────────────────────────────────────────

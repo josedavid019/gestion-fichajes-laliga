@@ -26,7 +26,7 @@ import {
 const modules = [
   { title: "Dashboard", url: "/", icon: FileBarChart },
   { title: "Detección YOLO", url: "/detection", icon: Camera },
-  { title: "Consulta IA / RAG", url: "/ai-query", icon: Brain },
+  { title: "Consulta de reglamento", url: "/ai-query", icon: Brain },
   { title: "Predicciones", url: "/prediction", icon: TrendingUp },
   { title: "Gestión de Jugadores", url: "/scouting", icon: Users },
 ];
