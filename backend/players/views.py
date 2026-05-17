@@ -1,6 +1,7 @@
 from rest_framework import viewsets, filters
 from rest_framework.pagination import LimitOffsetPagination
 from django_filters.rest_framework import DjangoFilterBackend
+from .permissions import IsAdminOrDirectorOrReadOnly
 from .models import (
     Country,
     Season,
@@ -73,6 +74,7 @@ class ClubViewSet(viewsets.ModelViewSet):
 
 
 class PlayerViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminOrDirectorOrReadOnly]
     queryset = (
         Player.objects.select_related(
             "current_club",

@@ -20,7 +20,7 @@ interface AdvancedFiltersProps {
 }
 
 const ageRanges = [
-  { value: "", label: "Todas las edades" },
+  { value: "none", label: "Todas las edades" },
   { value: "16-18", label: "16-18 años" },
   { value: "19-22", label: "19-22 años" },
   { value: "23-27", label: "23-27 años" },
@@ -29,7 +29,7 @@ const ageRanges = [
 ];
 
 const statusOptions = [
-  { value: "", label: "Todos los estados" },
+  { value: "none", label: "Todos los estados" },
   { value: "active", label: "Activo" },
   { value: "injured", label: "Lesionado" },
   { value: "suspended", label: "Sancionado" },
@@ -60,12 +60,17 @@ export default function AdvancedFilters({
           <label className="text-xs font-semibold text-muted-foreground mb-2 block">
             Club
           </label>
-          <Select value={selectedClub} onValueChange={setSelectedClub}>
+          <Select
+            value={selectedClub}
+            onValueChange={(value) =>
+              setSelectedClub(value === "none" ? "" : value)
+            }
+          >
             <SelectTrigger className="bg-muted/30 border-border/50 h-9">
               <SelectValue placeholder="Todos los clubs" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos los clubs</SelectItem>
+              <SelectItem value="none">Todos los clubs</SelectItem>
               {clubs.map((club) => (
                 <SelectItem key={club} value={club}>
                   {club}
@@ -80,7 +85,12 @@ export default function AdvancedFilters({
           <label className="text-xs font-semibold text-muted-foreground mb-2 block">
             Edad
           </label>
-          <Select value={selectedAgeRange} onValueChange={setSelectedAgeRange}>
+          <Select
+            value={selectedAgeRange}
+            onValueChange={(value) =>
+              setSelectedAgeRange(value === "none" ? "" : value)
+            }
+          >
             <SelectTrigger className="bg-muted/30 border-border/50 h-9">
               <SelectValue placeholder="Todas las edades" />
             </SelectTrigger>
@@ -99,7 +109,12 @@ export default function AdvancedFilters({
           <label className="text-xs font-semibold text-muted-foreground mb-2 block">
             Estado
           </label>
-          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+          <Select
+            value={selectedStatus}
+            onValueChange={(value) =>
+              setSelectedStatus(value === "none" ? "" : value)
+            }
+          >
             <SelectTrigger className="bg-muted/30 border-border/50 h-9">
               <SelectValue placeholder="Todos los estados" />
             </SelectTrigger>

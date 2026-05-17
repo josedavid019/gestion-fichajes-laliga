@@ -59,20 +59,62 @@ class ClubSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class PlayerPositionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PlayerPosition
+        fields = "__all__"
+
+
 class PlayerSerializer(serializers.ModelSerializer):
     nationality = CountrySerializer(read_only=True)
-    position = serializers.ReadOnlyField()
+    position = serializers.SerializerMethodField()
+    positions = PlayerPositionSerializer(many=True, read_only=True)
+    current_club = ClubSerializer(read_only=True)
+    current_club_id = serializers.PrimaryKeyRelatedField(
+        queryset=Club.objects.all(),
+        source="current_club",
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+    position_name = serializers.CharField(
+        write_only=True, required=False, allow_blank=True
+    )
     face_embedding = VectorFieldSerializer(allow_null=True, required=False)
 
     class Meta:
         model = Player
         fields = "__all__"
 
+    def get_position(self, obj: Player):
+        primary = obj.positions.filter(is_primary=True).first()
+        if primary:
+            return primary.position
+        first = obj.positions.first()
+        return first.position if first else None
 
-class PlayerPositionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PlayerPosition
-        fields = "__all__"
+    def _set_primary_position(self, player: Player, position_name: str | None):
+        if not position_name:
+            return
+        player.positions.update(is_primary=False)
+        PlayerPosition.objects.update_or_create(
+            player=player,
+            position=position_name,
+            defaults={"is_primary": True},
+        )
+
+    def create(self, validated_data):
+        position_name = validated_data.pop("position_name", None)
+        player = super().create(validated_data)
+        self._set_primary_position(player, position_name)
+        return player
+
+    def update(self, instance, validated_data):
+        position_name = validated_data.pop("position_name", None)
+        player = super().update(instance, validated_data)
+        if position_name is not None:
+            self._set_primary_position(player, position_name)
+        return player
 
 
 class PlayerNationalitySerializer(serializers.ModelSerializer):

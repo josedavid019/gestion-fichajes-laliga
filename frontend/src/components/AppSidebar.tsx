@@ -109,6 +109,20 @@ export function AppSidebar() {
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
+                  <SidebarMenuItem key="players-management">
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to="/admin/players"
+                        className="hover:bg-muted/50 transition-colors"
+                        activeClassName="bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                      >
+                        <Users className="mr-2 h-4 w-4" />
+                        {!collapsed && (
+                          <span className="text-sm">Jugadores</span>
+                        )}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                   <SidebarMenuItem key="audit-logs">
                     <SidebarMenuButton asChild>
                       <NavLink

@@ -13,6 +13,7 @@ import Prediction from "./pages/Prediction";
 import Reports from "./pages/Reports";
 import Scouting from "./pages/Scouting";
 import UserManagement from "./pages/UserManagement";
+import PlayerManagement from "./pages/PlayerManagement";
 import AuditLogs from "./pages/AuditLogs";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
@@ -89,6 +90,16 @@ const App = () => (
                 <AdminRoute>
                   <AppLayout>
                     <UserManagement />
+                  </AppLayout>
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/players"
+              element={
+                <AdminRoute>
+                  <AppLayout>
+                    <PlayerManagement />
                   </AppLayout>
                 </AdminRoute>
               }
