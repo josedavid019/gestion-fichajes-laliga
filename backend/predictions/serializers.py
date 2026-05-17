@@ -18,6 +18,17 @@ class MLModelSerializer(serializers.ModelSerializer):
 
 
 class MLPredictionSerializer(serializers.ModelSerializer):
+    predicted_value_eur = serializers.DecimalField(
+        source="predicted_value",
+        max_digits=18,
+        decimal_places=2,
+        read_only=True,
+    )
+    confidence = serializers.FloatField(
+        source="confidence_score",
+        read_only=True,
+    )
+
     class Meta:
         model = MLPrediction
         fields = [
@@ -36,9 +47,15 @@ class PlayerPredictionDetailSerializer(serializers.Serializer):
 
     player = PlayerSerializer(read_only=True)
     predicted_value_eur = serializers.DecimalField(
-        max_digits=14, decimal_places=2, required=False
+        source="predicted_value",
+        max_digits=18,
+        decimal_places=2,
+        required=False,
     )
-    confidence = serializers.FloatField(required=False)
+    confidence = serializers.FloatField(
+        source="confidence_score",
+        required=False,
+    )
     shap_values = serializers.JSONField(required=False)
     model_version = serializers.CharField(required=False)
 

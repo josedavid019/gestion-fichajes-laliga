@@ -35,74 +35,45 @@ export function usePlayers(params?: Record<string, string | number>) {
   return useQuery<Player[]>({
     queryKey: ["players", params],
     queryFn: async () => {
-      console.log("Fetching all players with pagination...");
-      let allPlayers: Player[] = [];
-      let offset = 0;
-      const limit = 50;
-      let hasMore = true;
+      // Optimized fetch:
+      // - If a `search` param is provided, request a single page from the API
+      //   and return results (server-side search).
+      // - Otherwise, fetch a single page with a larger `limit` to avoid
+      //   iterating over many pages on initial load.
+      const queryParams = new URLSearchParams();
 
-      while (hasMore) {
-        const queryParams = new URLSearchParams();
-        queryParams.append("limit", limit.toString());
-        queryParams.append("offset", offset.toString());
+      const isSearch = Boolean(params && (params as any).search);
+      const limit = isSearch ? 50 : 200;
+      queryParams.append("limit", String(limit));
+      queryParams.append("offset", "0");
 
-        if (params) {
-          Object.entries(params).forEach(([key, value]) => {
-            queryParams.append(key, String(value));
-          });
-        }
-
-        const url = `/api/players/?${queryParams.toString()}`;
-        console.log(`[Page ${offset / limit + 1}] Fetching from: ${url}`);
-
-        try {
-          const response = await fetchWithAuth(url);
-          if (!response.ok) {
-            console.error("API Error:", response.status, response.statusText);
-            throw new Error(`Failed to fetch players: ${response.statusText}`);
-          }
-
-          const data = await response.json();
-
-          let batch: Player[] = [];
-
-          // Handle paginated response
-          if (data.results) {
-            batch = data.results;
-            console.log(
-              `[Page ${offset / limit + 1}] Received ${batch.length} players (Total: ${data.count})`,
-            );
-          }
-          // Handle direct array response
-          else if (Array.isArray(data)) {
-            batch = data;
-            console.log(
-              `[Page ${offset / limit + 1}] Received ${batch.length} players`,
-            );
-          }
-
-          if (batch.length === 0) {
-            hasMore = false;
-          } else {
-            allPlayers = [...allPlayers, ...batch];
-            offset += limit;
-
-            // Safety check
-            if (allPlayers.length >= 500) {
-              hasMore = false;
-            }
-          }
-        } catch (err) {
-          console.error("Error fetching page:", err);
-          hasMore = false;
-        }
+      if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+          queryParams.append(key, String(value));
+        });
       }
 
-      console.log(`✓ Total players fetched: ${allPlayers.length}`);
-      return allPlayers;
+      const url = `/api/players/?${queryParams.toString()}`;
+      console.log(`Fetching players from: ${url}`);
+
+      const response = await fetchWithAuth(url);
+      if (!response.ok) {
+        console.error("API Error:", response.status, response.statusText);
+        throw new Error(`Failed to fetch players: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (data.results && Array.isArray(data.results)) {
+        return data.results as Player[];
+      }
+
+      if (Array.isArray(data)) return data as Player[];
+
+      return [];
     },
     retry: 1,
-    staleTime: 0, // Always fetch fresh data (development mode)
-    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes (formerly cacheTime)
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000,
   });
 }

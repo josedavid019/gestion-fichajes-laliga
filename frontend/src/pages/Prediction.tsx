@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   TrendingUp,
   BarChart3,
@@ -33,7 +33,17 @@ export default function Prediction() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: playersData = [], isLoading: playersLoading } = usePlayers();
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Use debounced term to drive server-side search
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  const { data: playersData = [], isLoading: playersLoading } = usePlayers(
+    debouncedSearch ? { search: debouncedSearch } : undefined,
+  );
   const { data: prediction, isLoading: predictionLoading } =
     usePrediction(selectedPlayerId);
   const { data: topPerformers = [] } = useTopPerformers(5);
@@ -42,14 +52,16 @@ export default function Prediction() {
   const filteredPlayers = useMemo(() => {
     if (!playersData || !searchTerm) return playersData;
     const lower = searchTerm.toLowerCase();
-    return playersData.filter(
-      (p) =>
-        (p.alias?.toLowerCase().includes(lower) ||
-          p.first_name?.toLowerCase().includes(lower) ||
-          p.last_name?.toLowerCase().includes(lower) ||
-          p.current_club?.name?.toLowerCase().includes(lower)) &&
-        p.market_value_eur
-    );
+    return playersData.filter((p) => {
+      const matchesSearch =
+        p.alias?.toLowerCase().includes(lower) ||
+        p.first_name?.toLowerCase().includes(lower) ||
+        p.last_name?.toLowerCase().includes(lower) ||
+        p.full_name?.toLowerCase().includes(lower) ||
+        p.current_club?.name?.toLowerCase().includes(lower);
+
+      return matchesSearch;
+    });
   }, [playersData, searchTerm]);
 
   const selectedPlayer = useMemo(() => {
@@ -124,36 +136,42 @@ export default function Prediction() {
         {/* Lista de jugadores */}
         {searchTerm && (
           <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-border bg-background/50">
-            {filteredPlayers.slice(0, 10).map((player) => (
-              <button
-                key={player.id}
-                onClick={() => {
-                  setSelectedPlayerId(player.id);
-                  setSearchTerm("");
-                }}
-                className="w-full text-left px-3 py-2 hover:bg-primary/10 border-b border-border/50 last:border-b-0 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">
-                      {player.alias || `${player.first_name} ${player.last_name}`}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {player.position} • {player.current_club?.name || "Sin club"}
-                    </p>
+            {filteredPlayers.length > 0 ? (
+              filteredPlayers.slice(0, 10).map((player) => (
+                <button
+                  key={player.id}
+                  onClick={() => {
+                    setSelectedPlayerId(player.id);
+                    setSearchTerm("");
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-primary/10 border-b border-border/50 last:border-b-0 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">
+                        {player.alias || `${player.first_name} ${player.last_name}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {player.position} • {player.current_club?.name || "Sin club"}
+                      </p>
+                    </div>
+                    <span className="text-xs font-semibold text-primary">
+                      €
+                      {player.market_value_eur
+                        ? (parseFloat(player.market_value_eur) / 1000000).toFixed(
+                            1
+                          )
+                        : "N/A"}
+                      M
+                    </span>
                   </div>
-                  <span className="text-xs font-semibold text-primary">
-                    €
-                    {player.market_value_eur
-                      ? (parseFloat(player.market_value_eur) / 1000000).toFixed(
-                          1
-                        )
-                      : "N/A"}
-                    M
-                  </span>
-                </div>
-              </button>
-            ))}
+                </button>
+              ))
+            ) : (
+              <div className="px-4 py-3 text-sm text-muted-foreground">
+                No se encontraron jugadores con "{searchTerm}".
+              </div>
+            )}
           </div>
         )}
       </div>

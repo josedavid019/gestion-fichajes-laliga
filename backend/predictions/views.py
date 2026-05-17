@@ -33,7 +33,7 @@ class PredictionViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = PredictionPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["player", "model"]
-    ordering_fields = ["created_at", "confidence", "predicted_value_eur"]
+    ordering_fields = ["created_at", "confidence_score", "predicted_value"]
     ordering = ["-created_at"]
 
     @action(detail=False, methods=["get"])
@@ -85,7 +85,7 @@ class PredictionViewSet(viewsets.ReadOnlyModelViewSet):
         predictions = (
             MLPrediction.objects.select_related("player")
             .filter(model__status="active")
-            .order_by("-predicted_value_eur")[:limit]
+            .order_by("-predicted_value")[:limit]
         )
 
         data = [
@@ -97,8 +97,8 @@ class PredictionViewSet(viewsets.ReadOnlyModelViewSet):
                     "club": p.player.current_club.name if p.player.current_club else "N/A",
                     "photo_url": p.player.photo_url,
                 },
-                "predicted_value_eur": float(p.predicted_value_eur or 0),
-                "confidence": p.confidence,
+                "predicted_value_eur": float(p.predicted_value or 0),
+                "confidence": float(p.confidence_score or 0),
             }
             for p in predictions
         ]
@@ -155,8 +155,8 @@ class PredictionViewSet(viewsets.ReadOnlyModelViewSet):
             prediction = MLPrediction.objects.create(
                 player=player,
                 model=model,
-                predicted_value_eur=predicted_value,
-                confidence=confidence,
+                predicted_value=predicted_value,
+                confidence_score=confidence,
                 shap_values={
                     "top_features": [
                         "age",
@@ -177,7 +177,7 @@ class PredictionViewSet(viewsets.ReadOnlyModelViewSet):
     def _extract_player_features(self, player):
         """Extrae features de un jugador desde la BD."""
         latest_stat = SeasonPlayerStat.objects.filter(player=player).order_by(
-            "-season__year_end"
+            "-season__end_date"
         ).first()
 
         if not latest_stat:
@@ -363,8 +363,8 @@ class PredictionViewSet(viewsets.ReadOnlyModelViewSet):
             player=player,
             model=active_model,
             defaults={
-                "predicted_value_eur": predicted_value,
-                "confidence": 0.7,
+                "predicted_value": predicted_value,
+                "confidence_score": 0.7,
                 "shap_values": {"note": "Mock prediction - model not trained yet"},
             },
         )
