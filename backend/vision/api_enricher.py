@@ -24,8 +24,9 @@ class APIFootballClient:
     DEFAULT_SEASON = int(os.getenv("FOOTBALL_API_SEASON", "2024"))
 
     def __init__(self, api_key: str | None = None):
-        self.api_key = api_key or os.getenv("APISPORTS_FOOTBALL_KEY", "")
-        self.headers = {"x-apisports-key": self.api_key}
+        self.api_key = (api_key or os.getenv("APISPORTS_FOOTBALL_KEY", "")).strip()
+        self.headers = {"x-apisports-key": self.api_key} if self.api_key else {}
+        self.last_error: str | None = None
 
     @staticmethod
     def _normalize_height(height_str: str | None) -> Optional[int]:
@@ -147,6 +148,101 @@ class APIFootballClient:
     def _normalize_name(name: str) -> str:
         return re.sub(r"[^A-Za-z\s]", "", name).strip()
 
+    @staticmethod
+    def _parse_money_value(value: object) -> float | None:
+        if value is None:
+            return None
+
+        if isinstance(value, dict):
+            for key in ("market", "amount", "price", "value", "market_value", "marketValue"):
+                if key in value:
+                    return APIFootballClient._parse_money_value(value[key])
+            return None
+
+        text = str(value).strip()
+        if not text:
+            return None
+
+        # Remove common currency symbols and extra spaces
+        text = text.replace("€", "").replace("$", "").replace("£", "").replace(" ", "")
+        multiplier = 1.0
+        if text.lower().endswith("m"):
+            multiplier = 1_000_000.0
+            text = text[:-1]
+        elif text.lower().endswith("k"):
+            multiplier = 1_000.0
+            text = text[:-1]
+
+        try:
+            return float(text.replace(",", ".")) * multiplier
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _parse_transfer_price(value: object) -> float | None:
+        if value is None:
+            return None
+        if isinstance(value, dict):
+            for key in ("amount", "price", "value", "market_value", "transfer_fee", "fee"):
+                if key in value:
+                    return APIFootballClient._parse_transfer_price(value[key])
+            return None
+        return APIFootballClient._parse_money_value(value)
+
+    def _get_transfer_market_value(self, player_id: int, team_id: int | None = None) -> float | None:
+        if not self.api_key or not player_id:
+            return None
+
+        params = {"player": player_id}
+        if team_id is not None:
+            params["team"] = team_id
+
+        try:
+            r = requests.get(
+                f"{self.BASE_URL}/transfers",
+                headers=self.headers,
+                params=params,
+                timeout=10,
+            )
+            r.raise_for_status()
+            data = r.json()
+
+            if isinstance(data, dict) and data.get("errors"):
+                self.last_error = f"API Football errors: {data.get('errors')}"
+                logger.warning("Fallo API-Football /transfers para player %s: %s", player_id, self.last_error)
+                return None
+
+            transfers = data.get("response") or []
+            candidate_prices = []
+            for item in transfers:
+                price = item.get("price") or item.get("transfer_price") or item.get("fee") or item.get("value")
+                amount = self._parse_transfer_price(price)
+                if amount is not None and amount > 0:
+                    candidate_prices.append((item.get("date"), amount))
+
+            if not candidate_prices:
+                return None
+
+            # Prefer the most recent transfer amount if there is a valid date,
+            # otherwise fall back to the highest paid amount.
+            candidate_prices.sort(key=lambda entry: (entry[0] or "", entry[1]), reverse=True)
+            return candidate_prices[0][1]
+        except requests.RequestException as exc:
+            self.last_error = str(exc)
+            if hasattr(exc, "response") and exc.response is not None:
+                try:
+                    body = exc.response.json()
+                    if isinstance(body, dict) and body.get("errors"):
+                        self.last_error = f"API Football errors: {body.get('errors')}"
+                except ValueError:
+                    pass
+            logger.warning("Fallo API-Football /transfers para player %s: %s", player_id, self.last_error)
+            return None
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            self.last_error = str(exc)
+            logger.warning("Respuesta invalida /transfers para player %s: %s", player_id, self.last_error)
+            return None
+
     @classmethod
     def _is_reasonable_match(cls, query_name: str, result_name: str | None) -> bool:
         if not result_name:
@@ -227,99 +323,137 @@ class APIFootballClient:
 
         return score
 
-    def _query(self, name: str, team_name: str | None = None):
+    def _query(
+        self,
+        name: str,
+        team_name: str | None = None,
+        team_id: int | None = None,
+    ):
         # Limpiamos: solo letras y espacios
         clean = self._normalize_name(name)
         if len(clean) < 3 or not self.api_key:
             return None
 
-        # Búsqueda en LaLiga y Segunda
+        self.last_error = None
         best_candidate = None
+        best_candidate_team_id = None
         best_score = float("-inf")
-        for league in [140, 141]:
-            params = {"search": clean, "league": league, "season": self.DEFAULT_SEASON}
-            try:
-                r = requests.get(
-                    f"{self.BASE_URL}/players",
-                    headers=self.headers,
-                    params=params,
-                    timeout=10,
-                )
-                r.raise_for_status()
-                data = r.json()
-                responses = data.get("response") or []
-                for res in responses:
-                    stats = res.get("statistics", [{}])[0]
-                    goals = stats.get("goals", {})
-                    passes = stats.get("passes", {})
-                    games = stats.get("games", {})
-                    full_name = res["player"]["name"]
-                    first_name, last_name = self._parse_name(full_name)
-                    height_cm = self._normalize_height(res["player"].get("height"))
-                    weight_kg = self._normalize_weight(res["player"].get("weight"))
-                    position = games.get("position")
-                    player_id = res["player"].get("id")
-                    team_name = stats.get("team", {}).get("name")
-                    # Obtener dorsal desde /players/squads
-                    jersey_number = (
-                        self._get_jersey_number(player_id, team_name)
-                        if player_id
-                        else None
-                    )
-                    injuries = self._get_injuries(player_id) if player_id else None
 
-                    candidate = {
-                        "full_name": full_name,
-                        "first_name": first_name,
-                        "last_name": last_name,
-                        "nationality": res["player"]["nationality"],
-                        "age": res["player"]["age"],
-                        "birth_date": res["player"].get("birth", {}).get("date"),
-                        "height": res["player"].get("height"),
-                        "height_cm": height_cm,
-                        "weight": res["player"].get("weight"),
-                        "weight_kg": weight_kg,
-                        "position": position,
-                        "jersey_number": jersey_number,
-                        "photo_url": res["player"].get("photo"),
-                        "status": injuries.get("status") if injuries else None,
-                        "statistics": {
-                            "appearances": games.get("appearences"),
-                            "minutes_played": games.get("minutes"),
-                            "rating": games.get("rating"),
-                            "goals": goals.get("total"),
-                            "assists": goals.get("assists"),
-                            "key_passes": passes.get("key"),
-                            "accuracy_passes": passes.get("accuracy"),
-                        },
-                        "team": {
-                            "name": stats.get("team", {}).get("name"),
-                            "logo": stats.get("team", {}).get("logo"),
-                        },
-                    }
-                    if self._is_reasonable_match(clean, candidate["full_name"]):
-                        score = self._score_candidate(
-                            clean,
-                            candidate["full_name"],
-                            team_name=team_name,
-                            candidate_team=candidate["team"]["name"],
-                        )
-                        if score > best_score:
-                            best_candidate = candidate
-                            best_score = score
-            except requests.RequestException as exc:
-                logger.warning("Fallo API-Football para '%s': %s", clean, exc)
-                continue
-            except (KeyError, IndexError, TypeError, ValueError) as exc:
-                logger.warning(
-                    "Respuesta invalida API-Football para '%s': %s", clean, exc
+        params = {"search": clean, "season": self.DEFAULT_SEASON}
+        if team_id is not None:
+            params["team"] = team_id
+
+        try:
+            r = requests.get(
+                f"{self.BASE_URL}/players",
+                headers=self.headers,
+                params=params,
+                timeout=10,
+            )
+            r.raise_for_status()
+            data = r.json()
+
+            if isinstance(data, dict) and data.get("errors"):
+                self.last_error = f"API Football errors: {data.get('errors')}"
+                logger.warning("Fallo API-Football para '%s': %s", clean, self.last_error)
+                return None
+
+            responses = data.get("response") or []
+            for res in responses:
+                stats = res.get("statistics", [{}])[0]
+                goals = stats.get("goals", {})
+                passes = stats.get("passes", {})
+                games = stats.get("games", {})
+                full_name = res["player"]["name"]
+                first_name, last_name = self._parse_name(full_name)
+                height_cm = self._normalize_height(res["player"].get("height"))
+                weight_kg = self._normalize_weight(res["player"].get("weight"))
+                position = games.get("position")
+                player_id = res["player"].get("id")
+                candidate_team_id = stats.get("team", {}).get("id")
+                candidate_team_name = stats.get("team", {}).get("name")
+                market_value = self._parse_money_value(
+                    res["player"].get("market_value")
+                    or res["player"].get("marketValue")
+                    or res["player"].get("value")
+                    or res["player"].get("price")
                 )
-                continue
+
+                candidate = {
+                    "full_name": full_name,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "external_id": player_id,
+                    "nationality": res["player"].get("nationality"),
+                    "age": res["player"].get("age"),
+                    "birth_date": res["player"].get("birth", {}).get("date"),
+                    "height": res["player"].get("height"),
+                    "height_cm": height_cm,
+                    "weight": res["player"].get("weight"),
+                    "weight_kg": weight_kg,
+                    "position": position,
+                    "jersey_number": None,
+                    "photo_url": res["player"].get("photo"),
+                    "status": None,
+                    "market_value_eur": market_value,
+                    "statistics": {
+                        "appearances": games.get("appearences"),
+                        "minutes_played": games.get("minutes"),
+                        "rating": games.get("rating"),
+                        "goals": goals.get("total"),
+                        "assists": goals.get("assists"),
+                        "key_passes": passes.get("key"),
+                        "accuracy_passes": passes.get("accuracy"),
+                    },
+                    "team": {
+                        "id": candidate_team_id,
+                        "name": candidate_team_name,
+                        "logo": stats.get("team", {}).get("logo"),
+                    },
+                }
+                if self._is_reasonable_match(clean, candidate["full_name"]):
+                    score = self._score_candidate(
+                        clean,
+                        candidate["full_name"],
+                        team_name=team_name,
+                        candidate_team=candidate["team"]["name"],
+                    )
+                    if score > best_score:
+                        best_candidate = candidate
+                        best_score = score
+                        best_candidate_team_id = candidate_team_id
+            if best_candidate and best_candidate.get("external_id"):
+                transfer_value = self._get_transfer_market_value(
+                    best_candidate["external_id"],
+                    team_id=best_candidate_team_id or team_id,
+                )
+                if transfer_value is not None:
+                    best_candidate["market_value_eur"] = transfer_value
+        except requests.RequestException as exc:
+            self.last_error = str(exc)
+            if hasattr(exc, "response") and exc.response is not None:
+                try:
+                    body = exc.response.json()
+                    if isinstance(body, dict) and body.get("errors"):
+                        self.last_error = f"API Football errors: {body.get('errors')}"
+                except ValueError:
+                    pass
+            logger.warning("Fallo API-Football para '%s': %s", clean, self.last_error)
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            self.last_error = str(exc)
+            logger.warning(
+                "Respuesta invalida API-Football para '%s': %s", clean, self.last_error
+            )
         return best_candidate
 
-    def search_player(self, name: str, team_name: str | None = None):
+    def search_player(
+        self,
+        name: str,
+        team_name: str | None = None,
+        team_id: int | None = None,
+    ):
         # 1. Intentar primero con el nombre COMPLETO
-        res = self._query(name, team_name=team_name)
+        res = self._query(name, team_name=team_name, team_id=team_id)
         if res:
             return res
 
@@ -329,14 +463,18 @@ class APIFootballClient:
             # 2a. Intentar con el ULTIMO apellido (más específico)
             last_name = parts[-1]
             if len(last_name) >= 4:  # Solo si apellido es largo
-                res_last = self._query(last_name, team_name=team_name)
+                res_last = self._query(
+                    last_name, team_name=team_name, team_id=team_id
+                )
                 if res_last:
                     return res_last
 
             # 2b. Intentar quitando la primera palabra (por si es basura)
             rest_name = " ".join(parts[1:])
             if rest_name and rest_name != last_name:
-                res_rest = self._query(rest_name, team_name=team_name)
+                res_rest = self._query(
+                    rest_name, team_name=team_name, team_id=team_id
+                )
                 if res_rest:
                     return res_rest
 

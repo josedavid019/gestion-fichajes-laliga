@@ -178,6 +178,37 @@ const PlayerManagement: React.FC = () => {
     },
   });
 
+  const updateMarketValues = useMutation({
+    mutationFn: async () => {
+      const response = await fetchWithAuth(
+        "/api/players/update-market-values/?limit=5",
+        {
+          method: "POST",
+        },
+      );
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(
+          errorBody.detail || "No se pudo actualizar los valores de mercado."
+        );
+      }
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["players"] });
+      const warningMessage = data.warnings?.length
+        ? ` (${data.warnings.join(" ")})`
+        : "";
+      toast.success(
+        `Valores de mercado actualizados usando /transfers: ${data.updated}${warningMessage}`,
+      );
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "No se pudo actualizar los valores de mercado.");
+      console.error(error);
+    },
+  });
+
   const selectedPlayer = useMemo(
     () =>
       (players as any[]).find((player: any) => player.id === editingPlayerId) ??
@@ -288,12 +319,22 @@ const PlayerManagement: React.FC = () => {
             Crea, edita y elimina jugadores desde el panel administrativo.
           </p>
         </div>
-        <Button
-          onClick={openNewDialog}
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-        >
-          <Plus className="w-4 h-4" /> Nuevo jugador
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={openNewDialog}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="w-4 h-4" /> Nuevo jugador
+          </Button>
+          <Button
+            onClick={() => updateMarketValues.mutate()}
+            disabled={updateMarketValues.isLoading}
+          >
+            {updateMarketValues.isLoading
+              ? "Actualizando valores..."
+              : "Actualizar valores de mercado (/transfers)"}
+          </Button>
+        </div>
       </div>
 
       <PlayerFilters

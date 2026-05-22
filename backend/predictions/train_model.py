@@ -23,11 +23,11 @@ from predictions.models import MLModel
 
 def load_training_data():
     """Carga datos de la BD y prepara features y target."""
-    print("📊 Cargando datos de la BD...")
+    print("[*] Cargando datos de la BD...")
 
     # Obtener todas las estadísticas de temporadas
     stats = SeasonPlayerStat.objects.select_related(
-        'player', 'season', 'club', 'player__current_club', 'player__nationality'
+        'player', 'season', 'club', 'player__current_club'
     ).all()
 
     if not stats.exists():
@@ -125,15 +125,15 @@ def load_training_data():
         data.append(record)
 
     df = pd.DataFrame(data)
-    print(f"✓ Cargados {len(df)} registros de jugadores")
-    print(f"✓ Rango de valores: €{df['market_value_eur'].min():,.0f} - €{df['market_value_eur'].max():,.0f}")
+    print(f"[+] Cargados {len(df)} registros de jugadores")
+    print(f"[+] Rango de valores: EUR {df['market_value_eur'].min():,.0f} - EUR {df['market_value_eur'].max():,.0f}")
 
     return df
 
 
 def feature_engineering(df):
     """Realiza feature engineering y preparación de datos."""
-    print("\n🔧 Feature Engineering...")
+    print("\n[*] Feature Engineering...")
 
     df = df.copy()
 
@@ -175,15 +175,15 @@ def feature_engineering(df):
     df['age_squared'] = df['age'] ** 2
     df['rating_goals_interaction'] = df['avg_rating'] * df['goals_per_90']
 
-    print(f"✓ Features finales: {df.shape[1]} columnas")
-    print(f"✓ Features: {[c for c in df.columns if c not in ['player_id', 'market_value_eur', 'club']]}")
+    print(f"[+] Features finales: {df.shape[1]} columnas")
+    print(f"[+] Features: {[c for c in df.columns if c not in ['player_id', 'market_value_eur', 'club']]}")
 
     return df
 
 
 def train_model(df):
     """Entrena el modelo XGBoost."""
-    print("\n🤖 Entrenando XGBoost...")
+    print("\n[*] Entrenando XGBoost...")
 
     # Separar features y target
     X = df.drop(columns=['player_id', 'market_value_eur', 'club'])
@@ -227,10 +227,10 @@ def train_model(df):
     rmse = np.sqrt(mean_squared_error(y_test, y_pred))
     r2 = r2_score(y_test, y_pred)
 
-    print(f"\n📈 Métricas del modelo:")
-    print(f"  MAE: €{mae:,.0f}")
-    print(f"  RMSE: €{rmse:,.0f}")
-    print(f"  R² Score: {r2:.4f}")
+    print(f"\n[METRICS]")
+    print(f"  MAE: EUR {mae:,.0f}")
+    print(f"  RMSE: EUR {rmse:,.0f}")
+    print(f"  R2 Score: {r2:.4f}")
 
     # Feature importance
     feature_importance = pd.DataFrame({
@@ -238,7 +238,7 @@ def train_model(df):
         'importance': model.feature_importances_
     }).sort_values('importance', ascending=False)
 
-    print(f"\n🎯 Top 10 Features:")
+    print(f"\n[TOP 10 FEATURES]")
     for idx, row in feature_importance.head(10).iterrows():
         print(f"  {row['feature']}: {row['importance']:.4f}")
 
@@ -247,7 +247,7 @@ def train_model(df):
 
 def calculate_shap_values(model, X, scaler):
     """Calcula SHAP values para interpretabilidad."""
-    print("\n💡 Calculando SHAP values...")
+    print("\n[*] Calculando SHAP values...")
 
     X_scaled = scaler.transform(X)
 
@@ -260,28 +260,36 @@ def calculate_shap_values(model, X, scaler):
 
 def save_model(model, scaler, feature_names, model_metadata):
     """Guarda el modelo y sus artefactos."""
-    print("\n💾 Guardando modelo...")
+    print("\n[*] Guardando modelo...")
 
     # Crear directorio si no existe
     model_dir = Path(__file__).parent / 'models_artifacts'
     model_dir.mkdir(exist_ok=True)
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    model_path = model_dir / f'market_value_model_{timestamp}.pkl'
+    model_filename = f'market_value_model_{timestamp}.pkl'
+    model_path = model_dir / model_filename
     scaler_path = model_dir / f'scaler_{timestamp}.pkl'
 
     joblib.dump(model, str(model_path))
     joblib.dump(scaler, str(scaler_path))
     joblib.dump(list(feature_names), str(model_dir / f'features_{timestamp}.pkl'))
 
-    # Guardar metadatos en BD
+    # Deprecar modelos previos activos
+    old_models = MLModel.objects.filter(
+        model_type='market_value',
+        status='active'
+    )
+    old_models.update(status='deprecated')
+
+    # Guardar metadatos en BD con ruta relativa corta
     ml_model = MLModel.objects.create(
         name='Market Value Prediction',
         model_type='market_value',
         version='1.0',
         algorithm='XGBoost',
         status='active',
-        file_path=str(model_path),
+        file_path=model_filename,
     )
 
     # Guardar metadata
@@ -296,8 +304,8 @@ def save_model(model, scaler, feature_names, model_metadata):
         'r2_score': model_metadata[2],
     }
 
-    print(f"✓ Modelo guardado en: {model_path}")
-    print(f"✓ ID del modelo en BD: {ml_model.id}")
+    print(f"[+] Modelo guardado en: {model_path}")
+    print(f"[+] ID del modelo en BD: {ml_model.id}")
 
     return ml_model, metadata
 
@@ -305,7 +313,7 @@ def save_model(model, scaler, feature_names, model_metadata):
 def main():
     """Pipeline completo de entrenamiento."""
     print("=" * 60)
-    print("🚀 ENTRENAMIENTO DE MODELO ML - PREDICCIÓN DE VALOR")
+    print("ENTRENAMIENTO DE MODELO ML - PREDICCION DE VALOR")
     print("=" * 60)
 
     try:
@@ -327,16 +335,16 @@ def main():
         )
 
         print("\n" + "=" * 60)
-        print("✅ ENTRENAMIENTO COMPLETADO EXITOSAMENTE")
+        print("ENTRENAMIENTO COMPLETADO EXITOSAMENTE")
         print("=" * 60)
         print(f"Modelo ID: {ml_model.id}")
         print(f"Algoritmo: {ml_model.algorithm}")
-        print(f"R² Score: {metrics[2]:.4f}")
+        print(f"R2 Score: {metrics[2]:.4f}")
 
         return ml_model
 
     except Exception as e:
-        print(f"\n❌ ERROR durante el entrenamiento: {str(e)}")
+        print(f"\nERROR durante el entrenamiento: {str(e)}")
         import traceback
         traceback.print_exc()
         raise

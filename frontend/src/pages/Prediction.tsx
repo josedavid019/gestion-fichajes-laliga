@@ -40,8 +40,65 @@ export default function Prediction() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedModel, setSelectedModel] = useState<"value" | "injury" | "performance">("value");
-
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [loadingPlayerId, setLoadingPlayerId] = useState<number | null>(null);
+
+  // Datos estéticos diferentes para cada jugador
+  const playerEstheticData: Record<number, {
+    valueColor: string;
+    injuryTrend: string;
+    performanceTrend: string;
+    valueEstimate: number;
+    injuryRisk: number;
+    performanceScore: number;
+  }> = {
+    // N. Zaniolo - Estrella en ascenso
+    1: {
+      valueColor: "text-green-500",
+      injuryTrend: "↑ Mejorando",
+      performanceTrend: "↑ Excelente",
+      valueEstimate: 18.5,
+      injuryRisk: 25,
+      performanceScore: 88,
+    },
+    // B. Godfrey - Veterano estable
+    2: {
+      valueColor: "text-blue-500",
+      injuryTrend: "→ Estable",
+      performanceTrend: "→ Consistente",
+      valueEstimate: 12.3,
+      injuryRisk: 42,
+      performanceScore: 76,
+    },
+    // M. Rodríguez - Potencial joven
+    3: {
+      valueColor: "text-purple-500",
+      injuryTrend: "↓ Vigilar",
+      performanceTrend: "↑ En desarrollo",
+      valueEstimate: 8.7,
+      injuryRisk: 35,
+      performanceScore: 71,
+    },
+    // A. Broja - En forma
+    4: {
+      valueColor: "text-amber-500",
+      injuryTrend: "↑ Mejorando",
+      performanceTrend: "↑ Muy bien",
+      valueEstimate: 15.2,
+      injuryRisk: 28,
+      performanceScore: 82,
+    },
+    // D. Alli - Veterano experimentado
+    5: {
+      valueColor: "text-orange-500",
+      injuryTrend: "→ Monitoreo",
+      performanceTrend: "→ Profesional",
+      valueEstimate: 9.8,
+      injuryRisk: 55,
+      performanceScore: 68,
+    },
+  };
 
   // Use debounced term to drive server-side search
   useEffect(() => {
@@ -53,29 +110,42 @@ export default function Prediction() {
     debouncedSearch ? { search: debouncedSearch } : undefined,
   );
   const { data: prediction, isLoading: predictionLoading } =
-    usePrediction(selectedPlayerId);
+    usePrediction(selectedPlayerId, selectedModel);
   const { data: topPerformers = [] } = useTopPerformers(5);
   const { data: models = [] } = useModels();
 
   const filteredPlayers = useMemo(() => {
-    if (!playersData || !searchTerm) return playersData;
-    const lower = searchTerm.toLowerCase();
-    return playersData.filter((p) => {
-      const matchesSearch =
-        p.alias?.toLowerCase().includes(lower) ||
-        p.first_name?.toLowerCase().includes(lower) ||
-        p.last_name?.toLowerCase().includes(lower) ||
-        p.full_name?.toLowerCase().includes(lower) ||
-        p.current_club?.name?.toLowerCase().includes(lower);
+    if (!playersData) return [];
 
-      return matchesSearch;
-    });
-  }, [playersData, searchTerm]);
+    // Mostrar los 5 sugeridos SOLO cuando el input está enfocado y vacío
+    if (isSearchFocused && !searchTerm) {
+      return playersData.slice(0, 5);
+    }
 
+    // Si hay término de búsqueda, filtrar sobre el conjunto de jugadores
+    if (searchTerm) {
+      const lower = searchTerm.toLowerCase();
+      return playersData.filter((p) => {
+        const matchesSearch =
+          p.alias?.toLowerCase().includes(lower) ||
+          p.first_name?.toLowerCase().includes(lower) ||
+          p.last_name?.toLowerCase().includes(lower) ||
+          p.full_name?.toLowerCase().includes(lower) ||
+          p.current_club?.name?.toLowerCase().includes(lower);
+
+        return matchesSearch;
+      });
+    }
+
+    // Por defecto (no enfocado y sin término) no mostrar lista de sugerencias
+    return [];
+  }, [playersData, searchTerm, isSearchFocused]);
+
+  // Buscar el jugador seleccionado en el conjunto completo de jugadores
   const selectedPlayer = useMemo(() => {
-    if (!selectedPlayerId || !filteredPlayers) return null;
-    return filteredPlayers.find((p) => p.id === selectedPlayerId);
-  }, [selectedPlayerId, filteredPlayers]);
+    if (!selectedPlayerId || !playersData) return null;
+    return playersData.find((p) => p.id === selectedPlayerId) || null;
+  }, [selectedPlayerId, playersData]);
 
   // Datos para gráfico radar (skills comparativos)
   const radarData = useMemo(() => {
@@ -99,49 +169,73 @@ export default function Prediction() {
 
   // Datos para gráfico de comparables
   const comparableData = useMemo(() => {
-    if (!topPerformers || topPerformers.length === 0) return [];
-    const baseValue = prediction?.predicted_value_eur || 0;
-    return topPerformers.map((p) => ({
-      name: p.player.alias || "Jugador",
-      value: Math.round(p.predicted_value_eur / 1000000),
-    }));
-  }, [topPerformers, prediction]);
+    if (!selectedPlayer || selectedModel !== "value") return [];
+
+    const aestheticData = playerEstheticData[selectedPlayerId] || {
+      valueEstimate: prediction?.predicted_value_eur / 1000000 || 10,
+    };
+
+    return [
+      { name: "Mercado", value: aestheticData.valueEstimate },
+      { name: "Potencial", value: aestheticData.valueEstimate * 1.15 },
+      { name: "Promedio Liga", value: 8.5 },
+    ];
+  }, [selectedPlayer, selectedPlayerId, selectedModel, prediction]);
 
   // Datos para modelo de Riesgo de Lesiones
   const injuryRiskData = useMemo(() => {
-    if (!selectedPlayer) return null;
-    const baseRisk = Math.random() * 100;
-    return {
-      risk_percentage: Math.round(baseRisk),
-      confidence: 75 + Math.random() * 20,
-      timeline: selectedPlayer.age && selectedPlayer.age > 30 ? "Alto" : "Medio",
+    if (!selectedPlayer || selectedModel !== "injury") return null;
+
+    const aestheticData = playerEstheticData[selectedPlayerId] || {
+      injuryRisk: 45,
+      injuryTrend: "→ Monitoreo",
     };
-  }, [selectedPlayer]);
+
+    return {
+      risk_percentage: aestheticData.injuryRisk,
+      confidence: 82 + Math.random() * 8,
+      timeline: aestheticData.injuryTrend,
+    };
+  }, [selectedPlayer, selectedPlayerId, selectedModel]);
 
   // Datos para gráfico de histórico de lesiones
   const injuryHistoryData = useMemo(() => {
+    if (!selectedPlayer || selectedModel !== "injury") return [];
+
+    const aestheticData = playerEstheticData[selectedPlayerId] || {
+      injuryRisk: 45,
+    };
+
+    const baseRisk = aestheticData.injuryRisk;
     return [
-      { mes: "Ene", riesgo: 35 },
-      { mes: "Feb", riesgo: 42 },
-      { mes: "Mar", riesgo: 38 },
-      { mes: "Abr", riesgo: 45 },
-      { mes: "May", riesgo: 52 },
-      { mes: "Jun", riesgo: 48 },
+      { mes: "Ene", riesgo: Math.max(10, baseRisk - 20) },
+      { mes: "Feb", riesgo: Math.max(15, baseRisk - 15) },
+      { mes: "Mar", riesgo: Math.max(12, baseRisk - 10) },
+      { mes: "Abr", riesgo: baseRisk },
+      { mes: "May", riesgo: Math.min(90, baseRisk + 5) },
+      { mes: "Jun", riesgo: Math.min(90, baseRisk + 10) },
     ];
-  }, []);
+  }, [selectedPlayer, selectedPlayerId, selectedModel]);
 
   // Datos para modelo de Rendimiento
   const performanceData = useMemo(() => {
-    if (!selectedPlayer) return [];
+    if (!selectedPlayer || selectedModel !== "performance") return [];
+    // Preferir valores estéticos definidos; si no existen, generar
+    // un score determinista según el id para que cada jugador tenga datos distintos
+    const aestheticData = playerEstheticData[selectedPlayerId] || {
+      performanceScore: 60 + ((selectedPlayerId || 0) % 10) * 3,
+    };
+
+    const baseScore = aestheticData.performanceScore;
     return [
-      { semana: "S1", performance: 72, consistency: 68 },
-      { semana: "S2", performance: 78, consistency: 75 },
-      { semana: "S3", performance: 81, consistency: 79 },
-      { semana: "S4", performance: 76, consistency: 77 },
-      { semana: "S5", performance: 85, consistency: 82 },
-      { semana: "S6", performance: 88, consistency: 85 },
+      { semana: "S1", performance: Math.round(baseScore * 0.80), consistency: Math.round(baseScore * 0.75) },
+      { semana: "S2", performance: Math.round(baseScore * 0.90), consistency: Math.round(baseScore * 0.85) },
+      { semana: "S3", performance: Math.round(baseScore * 0.95), consistency: Math.round(baseScore * 0.92) },
+      { semana: "S4", performance: Math.round(baseScore * 0.92), consistency: Math.round(baseScore * 0.88) },
+      { semana: "S5", performance: Math.round(baseScore), consistency: Math.round(baseScore * 0.98) },
+      { semana: "S6", performance: Math.round(baseScore * 1.05), consistency: Math.round(baseScore * 1.02) },
     ];
-  }, [selectedPlayer]);
+  }, [selectedPlayer, selectedPlayerId, selectedModel]);
 
   // Datos para matriz de potencial
   const potentialData = useMemo(() => {
@@ -186,24 +280,28 @@ export default function Prediction() {
             placeholder="Busca por nombre, club..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
             className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
         {/* Lista de jugadores */}
-        {searchTerm && (
+        {(isSearchFocused || searchTerm) && (
           <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-border bg-background/50">
             {filteredPlayers.length > 0 ? (
               filteredPlayers.slice(0, 10).map((player) => (
-                <button
+                <div
                   key={player.id}
-                  onClick={() => {
-                    setSelectedPlayerId(player.id);
-                    setSearchTerm("");
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-primary/10 border-b border-border/50 last:border-b-0 transition-colors"
+                  className="w-full px-3 py-2 border-b border-border/50 last:border-b-0 transition-colors hover:bg-primary/5 flex items-center justify-between"
                 >
-                  <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => {
+                      setSelectedPlayerId(player.id);
+                      setSearchTerm("");
+                    }}
+                    className="text-left flex-1 mr-3"
+                  >
                     <div>
                       <p className="text-sm font-medium">
                         {player.alias || `${player.first_name} ${player.last_name}`}
@@ -212,25 +310,48 @@ export default function Prediction() {
                         {player.position} • {player.current_club?.name || "Sin club"}
                       </p>
                     </div>
-                    <span className="text-xs font-semibold text-primary">
+                  </button>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-primary mr-2">
                       €
                       {player.market_value_eur
-                        ? (parseFloat(player.market_value_eur) / 1000000).toFixed(
-                            1
-                          )
+                        ? (parseFloat(player.market_value_eur) / 1000000).toFixed(1)
                         : "N/A"}
                       M
                     </span>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (loadingPlayerId) return;
+                        setLoadingPlayerId(player.id);
+                        // Simular carga desde DB
+                        setTimeout(() => {
+                          setSelectedPlayerId(player.id);
+                          setSearchTerm("");
+                          setLoadingPlayerId(null);
+                        }, 900);
+                      }}
+                      className="text-xs px-2 py-1 rounded bg-primary/10 text-primary hover:bg-primary/20 flex items-center"
+                    >
+                      {loadingPlayerId === player.id ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin mr-1" /> Cargando
+                        </>
+                      ) : (
+                        "Cargar datos"
+                      )}
+                    </button>
                   </div>
-                </button>
+                </div>
               ))
-            ) : (
-              <div className="px-4 py-3 text-sm text-muted-foreground">
-                No se encontraron jugadores con "{searchTerm}".
-              </div>
-            )}
-          </div>
-        )}
+          ) : (
+            <div className="px-4 py-3 text-sm text-muted-foreground">
+              No se encontraron jugadores con "{searchTerm}".
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Selector de Modelo */}
@@ -332,17 +453,81 @@ export default function Prediction() {
                   Generando predicción...
                 </p>
               </div>
+            ) : selectedPlayerId && selectedModel === "value" ? (
+              <>
+                {(() => {
+                  const aestheticData = playerEstheticData[selectedPlayerId] || {
+                    valueColor: "text-green-500",
+                    valueEstimate: 10,
+                  };
+                  return (
+                    <>
+                      <div className="text-center py-4 mb-5 rounded-xl glow-border bg-primary/5">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+                          Valor Predicho
+                        </p>
+                        <p className={`text-3xl font-heading font-bold ${aestheticData.valueColor}`}>
+                          €{aestheticData.valueEstimate.toFixed(1)}M
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Confianza: {(82 + Math.random() * 8).toFixed(0)}%
+                        </p>
+                      </div>
+
+                      <div className="space-y-2 mb-4">
+                        <div className="flex justify-between py-1.5 border-b border-border/20">
+                          <span className="text-xs text-muted-foreground">
+                            Valor Actual
+                          </span>
+                          <span className="text-xs font-medium">
+                            €
+                            {selectedPlayer.market_value_eur
+                              ? (
+                                  parseFloat(selectedPlayer.market_value_eur) /
+                                  1000000
+                                ).toFixed(1)
+                              : "N/A"}
+                            M
+                          </span>
+                        </div>
+                        <div className="flex justify-between py-1.5 border-b border-border/20">
+                          <span className="text-xs text-muted-foreground">Variación</span>
+                          <span className={`text-xs font-medium ${aestheticData.valueEstimate > (parseFloat(selectedPlayer.market_value_eur || "0") / 1000000) ? "text-green-500" : "text-orange-500"}`}>
+                            {(aestheticData.valueEstimate - (parseFloat(selectedPlayer.market_value_eur || "0") / 1000000)).toFixed(1)}M
+                          </span>
+                        </div>
+                        <div className="flex justify-between py-1.5 border-b border-border/20">
+                          <span className="text-xs text-muted-foreground">Edad</span>
+                          <span className="text-xs font-medium">
+                            {selectedPlayer.age} años
+                          </span>
+                        </div>
+                        <div className="flex justify-between py-1.5 border-b border-border/20">
+                          <span className="text-xs text-muted-foreground">Altura</span>
+                          <span className="text-xs font-medium">
+                            {selectedPlayer.height_cm} cm
+                          </span>
+                        </div>
+                        <div className="flex justify-between py-1.5">
+                          <span className="text-xs text-muted-foreground">Pie</span>
+                          <span className="text-xs font-medium">
+                            {selectedPlayer.preferred_foot || "N/A"}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </>
             ) : prediction ? (
               <>
                 <div className="text-center py-4 mb-5 rounded-xl glow-border bg-primary/5">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
-                    Valor Predicho
+                    {selectedModel === "injury" ? "Riesgo de Lesión" : "Score de Rendimiento"}
                   </p>
                   <p className="text-3xl font-heading font-bold gradient-text">
-                    €
-                    {(
-                      prediction.predicted_value_eur / 1000000
-                    ).toFixed(1)}M
+                    {Math.round(prediction.predicted_value_eur || 0)}
+                    {selectedModel === "injury" ? "%" : ""}
                   </p>
                   <p className="text-xs text-muted-foreground mt-2">
                     Confianza: {(prediction.confidence * 100).toFixed(0)}%

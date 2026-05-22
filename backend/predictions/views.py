@@ -38,8 +38,10 @@ class PredictionViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=["get"])
     def player(self, request):
-        """GET /api/predictions/player/?player_id=X"""
+        """GET /api/predictions/player/?player_id=X&model_type=value|injury|performance"""
         player_id = request.query_params.get("player_id")
+        model_type = request.query_params.get("model_type", "value")
+
         if not player_id:
             return Response(
                 {"error": "player_id is required"},
@@ -47,7 +49,7 @@ class PredictionViewSet(viewsets.ReadOnlyModelViewSet):
             )
 
         player = get_object_or_404(Player, id=player_id)
-        prediction = self._get_or_create_prediction(player)
+        prediction = self._get_or_create_prediction(player, model_type)
 
         serializer = PlayerPredictionDetailSerializer(prediction)
         return Response(serializer.data)
@@ -105,28 +107,44 @@ class PredictionViewSet(viewsets.ReadOnlyModelViewSet):
 
         return Response(data)
 
-    def _get_or_create_prediction(self, player):
+    def _get_or_create_prediction(self, player, model_type="value"):
         """Obtiene predicción existente o crea una nueva."""
         # Intentar obtener predicción reciente del modelo activo
-        active_model = MLModel.objects.filter(status="active").first()
+        active_model = MLModel.objects.filter(
+            status="active",
+            model_type=model_type
+        ).first()
+
         if not active_model:
-            return self._create_mock_prediction(player)
+            return self._create_mock_prediction(player, model_type)
 
         prediction = MLPrediction.objects.filter(
             player=player, model=active_model
         ).first()
 
         if not prediction:
-            prediction = self._create_prediction_for_player(player, active_model)
+            prediction = self._create_prediction_for_player(player, active_model, model_type)
 
         return prediction
 
-    def _create_prediction_for_player(self, player, model):
+    def _create_prediction_for_player(self, player, model, model_type="value"):
         """Crea una predicción para un jugador usando el modelo."""
         try:
+            # Para modelos que no son market_value, retornar los datos directamente
+            if model_type != "value":
+                # Retornar predicción existente o crear mock
+                prediction = MLPrediction.objects.filter(
+                    player=player, model=model
+                ).first()
+                if prediction:
+                    return prediction
+                else:
+                    return self._create_mock_prediction(player, model_type)
+
+            # Para market_value, usar el modelo completo
             features = self._extract_player_features(player)
             models_dir = Path(__file__).parent / "models_artifacts"
-            
+
             # Find the latest model file
             model_files = list(models_dir.glob("market_value_model_*.pkl"))
             if not model_files:
@@ -137,12 +155,12 @@ class PredictionViewSet(viewsets.ReadOnlyModelViewSet):
                 # Get the most recent model
                 latest_model_file = max(model_files, key=lambda x: x.stat().st_mtime)
                 ml_model = joblib.load(str(latest_model_file))
-                
+
                 # Find corresponding scaler
                 timestamp = latest_model_file.stem.split('_')[-1]
                 scaler_path = models_dir / f"scaler_{timestamp}.pkl"
                 features_path = models_dir / f"features_{timestamp}.pkl"
-                
+
                 scaler = joblib.load(str(scaler_path))
                 feature_names = joblib.load(str(features_path))
 
@@ -172,7 +190,7 @@ class PredictionViewSet(viewsets.ReadOnlyModelViewSet):
 
         except Exception as e:
             print(f"Error creating prediction: {e}")
-            return self._create_mock_prediction(player)
+            return self._create_mock_prediction(player, model_type)
 
     def _extract_player_features(self, player):
         """Extrae features de un jugador desde la BD."""
@@ -286,15 +304,12 @@ class PredictionViewSet(viewsets.ReadOnlyModelViewSet):
         nat_France = 1 if "France" in nationality else 0
         nat_Ghana = 1 if "Ghana" in nationality else 0
         nat_Morocco = 1 if "Morocco" in nationality else 0
-        nat_Other = 1 if not any([nat_Argentina, nat_Brazil, nat_England, nat_France, nat_Ghana, nat_Morocco, 
-                                  1 if "Poland" in nationality else 0,
-                                  1 if "Serbia" in nationality else 0,
-                                  1 if "Sweden" in nationality else 0,
-                                  1 if "Uruguay" in nationality else 0]) else 0
         nat_Poland = 1 if "Poland" in nationality else 0
         nat_Serbia = 1 if "Serbia" in nationality else 0
         nat_Sweden = 1 if "Sweden" in nationality else 0
         nat_Uruguay = 1 if "Uruguay" in nationality else 0
+        nat_Other = 1 if not any([nat_Argentina, nat_Brazil, nat_England, nat_France, nat_Ghana, nat_Morocco,
+                                  nat_Poland, nat_Serbia, nat_Sweden, nat_Uruguay]) else 0
 
         # Polynomial features
         age_val = age or 25
@@ -349,15 +364,20 @@ class PredictionViewSet(viewsets.ReadOnlyModelViewSet):
         goals_bonus = features.get("goals", 0) * 50000
         return base_value + goals_bonus
 
-    def _create_mock_prediction(self, player):
+    def _create_mock_prediction(self, player, model_type="value"):
         """Crea una predicción mock si no hay modelo."""
         active_model, _ = MLModel.objects.get_or_create(
-            name="Default Mock Model",
-            model_type="market_value",
+            name=f"Default Mock Model {model_type}",
+            model_type=model_type,
             defaults={"version": "0.1", "status": "active"},
         )
 
-        predicted_value = float(player.market_value_eur or 1000000)
+        if model_type == "value":
+            predicted_value = float(player.market_value_eur or 1000000)
+        elif model_type == "injury":
+            predicted_value = 50  # 50% risk
+        else:  # performance
+            predicted_value = 75  # 75 performance score
 
         prediction, _ = MLPrediction.objects.get_or_create(
             player=player,
@@ -365,7 +385,7 @@ class PredictionViewSet(viewsets.ReadOnlyModelViewSet):
             defaults={
                 "predicted_value": predicted_value,
                 "confidence_score": 0.7,
-                "shap_values": {"note": "Mock prediction - model not trained yet"},
+                "shap_values": {"note": f"Mock prediction for {model_type}"},
             },
         )
 

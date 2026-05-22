@@ -61,14 +61,14 @@ export interface TopPerformer {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "";
 
-export function usePrediction(playerId?: number) {
+export function usePrediction(playerId?: number, modelType: "value" | "injury" | "performance" = "value") {
   return useQuery<PredictionResponse | null>({
-    queryKey: ["prediction", playerId],
+    queryKey: ["prediction", playerId, modelType],
     queryFn: async () => {
       if (!playerId) return null;
 
       try {
-        const url = `/api/predictions/player/?player_id=${playerId}`;
+        const url = `/api/predictions/player/?player_id=${playerId}&model_type=${modelType}`;
         const response = await fetchWithAuth(url);
         if (!response.ok) {
           console.error("API Error:", response.status, response.statusText);
